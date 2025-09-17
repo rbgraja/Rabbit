@@ -52,6 +52,8 @@ function Productdetail({ productId: propProductId }) {
   useEffect(() => {
     if (!selectedProduct) return;
 
+    console.log("📦 Product detail fetched:", selectedProduct); // ✅ Debug log
+
     if (selectedProduct.images?.length > 0) {
       setMainImage(selectedProduct.images[0].url);
     }
@@ -68,11 +70,10 @@ function Productdetail({ productId: propProductId }) {
   const handleQuantityChange = (type) => {
     setQuantity((prev) => {
       if (type === 'plus') {
-        // ✅ prevent exceeding stock
-        if (prev < selectedProduct.stock) {
+        if (prev < selectedProduct?.stock) {
           return prev + 1;
         } else {
-          toast.error(`Only ${selectedProduct.stock} items available in stock`);
+          toast.error(`Only ${selectedProduct?.stock} items available in stock`);
           return prev;
         }
       } else {
@@ -87,9 +88,8 @@ function Productdetail({ productId: propProductId }) {
       return;
     }
 
-    // ✅ Prevent adding more than stock
-    if (quantity > selectedProduct.stock) {
-      toast.error(`You can only add up to ${selectedProduct.stock} items`);
+    if (quantity > selectedProduct?.stock) {
+      toast.error(`You can only add up to ${selectedProduct?.stock} items`);
       return;
     }
 
@@ -110,7 +110,6 @@ function Productdetail({ productId: propProductId }) {
       .catch(() => toast.error('Failed to add product to cart'))
       .finally(() => setIsButtonDisabled(false));
   };
-
 
   if (loading) return <p className="text-center text-gray-500">Loading product...</p>;
   if (error) return <p className="text-center text-red-500">Error: {error}</p>;
@@ -151,6 +150,11 @@ function Productdetail({ productId: propProductId }) {
             <h1 className="text-3xl font-bold text-gray-900">{selectedProduct.name}</h1>
             <p className="text-2xl text-green-600 font-semibold">${selectedProduct.price}</p>
             <p className="text-gray-600">{selectedProduct.description}</p>
+
+            {/* ✅ Stock Info */}
+            <p className="text-sm text-gray-500">
+              Available stock: {selectedProduct?.stock ?? "N/A"}
+            </p>
 
             {/* Color */}
             {colorOptions.length > 0 && (
