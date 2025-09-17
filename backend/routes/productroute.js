@@ -171,6 +171,39 @@ if (minPrice !== undefined || maxPrice !== undefined) {
 
 /**
  * ========================================================================
+ * @route   GET /api/products/filters
+ * @desc    Get available filter options dynamically from DB
+ * @access  Public
+ * ========================================================================
+ */
+router.get("/filters", async (req, res) => {
+  try {
+    const categories = await Product.distinct("category");
+    const colors = await Product.distinct("colors");  // ✅ tumhare model me array ho sakta hai
+    const sizes = await Product.distinct("sizes");
+    const materials = await Product.distinct("material");
+    const brands = await Product.distinct("brand");
+    const genders = await Product.distinct("gender");
+
+    res.status(200).json({
+      categories: categories.filter(Boolean),
+      colors: colors.filter(Boolean),
+      sizes: sizes.filter(Boolean),
+      materials: materials.filter(Boolean),
+      brands: brands.filter(Boolean),
+      genders: genders.filter(Boolean),
+    });
+  } catch (err) {
+    console.error("❌ Fetch Filter Options Error:", err.message);
+    res.status(500).json({ message: "Server Error" });
+  }
+});
+
+
+
+
+/**
+ * ========================================================================
  * @route   GET /api/products/best-sellers
  * @desc    Get top N best-selling products based on rating & reviews
  * @access  Public
