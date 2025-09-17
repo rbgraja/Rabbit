@@ -7,7 +7,6 @@ import {
   fetchProductDetail,
   similarProducts,
 } from '../../redux/slices/productSlice';
-
 import { addToCartAsync } from '../../redux/slices/cartSlice';
 
 function Productdetail({ productId: propProductId }) {
@@ -52,7 +51,7 @@ function Productdetail({ productId: propProductId }) {
   useEffect(() => {
     if (!selectedProduct) return;
 
-    console.log("📦 Product detail fetched:", selectedProduct); // ✅ Debug log
+    console.log("📦 Product detail fetched:", selectedProduct);
 
     if (selectedProduct.images?.length > 0) {
       setMainImage(selectedProduct.images[0].url);
@@ -99,7 +98,7 @@ function Productdetail({ productId: propProductId }) {
       productId,
       quantity,
       size: selectedSize.trim().toLowerCase(),
-      color: selectedColor.trim().toLowerCase(),
+      color: formatColor(selectedColor),
       guestId,
       userId: user?._id,
     };
@@ -151,7 +150,6 @@ function Productdetail({ productId: propProductId }) {
             <p className="text-2xl text-green-600 font-semibold">${selectedProduct.price}</p>
             <p className="text-gray-600">{selectedProduct.description}</p>
 
-            {/* ✅ Stock Info */}
             <p className="text-sm text-gray-500">
               Available stock: {selectedProduct?.stock ?? "N/A"}
             </p>
@@ -171,7 +169,7 @@ function Productdetail({ productId: propProductId }) {
                           : 'border-gray-300 hover:border-black'
                       }`}
                       style={{
-                        backgroundColor: isColor(color) ? color.toLowerCase() : '#ccc',
+                        backgroundColor: formatColor(color),
                       }}
                       title={color}
                     />
@@ -247,10 +245,26 @@ function Productdetail({ productId: propProductId }) {
   );
 }
 
-function isColor(strColor) {
+/* ------------------ Custom Color Mapping ------------------ */
+const customColors = {
+  "floralprint": "#ffb6c1",      // example light pink
+  "sunsetorange": "#ff4500",      // example orange
+  "Tropical Print": "#87ceeb",
+  "lightgreen": "#90ee90",
+  // 🔹 Aage bhi yahan custom colors add kar sakte ho
+  // "midnightblue": "#191970",
+  // "peach": "#ffcba4",
+};
+
+function formatColor(colorStr) {
+  if (!colorStr) return "#ccc";
+  const key = colorStr.toLowerCase().replace(/\s+/g, ""); // remove spaces for mapping
+  if (customColors[key]) return customColors[key];
+
+  // Agar standard CSS color hai to use karo
   const s = new Option().style;
-  s.color = strColor;
-  return s.color !== '';
+  s.color = colorStr.toLowerCase().replace(/\s+/g, "");
+  return s.color !== "" ? s.color : "#ccc"; // fallback gray
 }
 
 export default Productdetail;
