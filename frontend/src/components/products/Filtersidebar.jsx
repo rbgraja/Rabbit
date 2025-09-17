@@ -38,7 +38,14 @@ function Filtersidebar() {
     const fetchFilters = async () => {
       try {
         const res = await axios.get("/api/products/filters");
-        setFilterOptions(res.data);
+        setFilterOptions({
+          categories: res.data.categories || [],
+          colors: res.data.colors || [],
+          sizes: res.data.sizes || [],
+          materials: res.data.materials || [],
+          brands: res.data.brands || [],
+          genders: res.data.genders || [],
+        });
       } catch (err) {
         console.error("Error fetching filters:", err);
       }
@@ -46,6 +53,7 @@ function Filtersidebar() {
     fetchFilters();
   }, []);
 
+  // URL → State
   useEffect(() => {
     const params = Object.fromEntries([...searchparams]);
     const parsed = {
@@ -242,6 +250,47 @@ function Filtersidebar() {
           ))}
         </div>
       )}
+
+      {/* Price Range */}
+      <div className="mb-8">
+        <label className="block text-gray-600 font-medium mb-2">
+          Price Range
+        </label>
+        <div className="flex justify-between items-center mb-2 gap-2">
+          <input
+            type="number"
+            name="minPrice"
+            min={0}
+            max={filters.maxPrice}
+            value={filters.minPrice}
+            onChange={handlefilterchange}
+            className="w-1/2 p-1 border rounded"
+          />
+          <input
+            type="number"
+            name="maxPrice"
+            min={filters.minPrice}
+            max={200}
+            value={filters.maxPrice}
+            onChange={handlefilterchange}
+            className="w-1/2 p-1 border rounded"
+          />
+        </div>
+
+        <input
+          type="range"
+          name="maxPrice"
+          min={0}
+          max={200}
+          value={filters.maxPrice}
+          onChange={handlefilterchange}
+          className="w-full"
+        />
+        <div className="flex justify-between text-gray-600 mt-2">
+          <span>${filters.minPrice}</span>
+          <span>${filters.maxPrice}</span>
+        </div>
+      </div>
     </div>
   );
 }
