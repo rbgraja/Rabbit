@@ -65,6 +65,7 @@ router.delete("/users/:id", protect, authorizeRoles("admin"), async (req, res) =
 router.get("/orders", protect, authorizeRoles("admin"), async (req, res) => {
   try {
     const orders = await Order.find().populate("user", "name email").sort({ createdAt: -1 });
+       console.log("📦 Admin Orders from DB:", orders); // Debug
     res.status(200).json({ success: true, count: orders.length, orders });
   } catch (err) {
     res.status(500).json({ message: "Error fetching orders" });
