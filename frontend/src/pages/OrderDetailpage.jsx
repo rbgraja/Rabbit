@@ -1,0 +1,183 @@
+import React, { useEffect } from "react";
+import { Link, useParams, useLocation } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchOrderDetailById } from "../redux/slices/orderSlice";
+
+function OrderDetailPage() {
+  const { id } = useParams();
+  const dispatch = useDispatch();
+  const location = useLocation();
+
+  // Redux se user aur token dono le rahe hain
+  const { user, token } = useSelector((state) => state.auth);
+  const { orderDetail, loading, error } = useSelector((state) => state.orders);
+
+  // Normalize backend order object
+  const order =
+    orderDetail?.order ||
+    (orderDetail?.success ? orderDetail : null) ||
+    orderDetail;
+
+  useEffect(() => {
+    console.log("✅ OrderDetailPage mounted with id:", id);
+    console.log("User token from Redux:", token);
+    console.log("Local token from storage:", localStorage.getItem("userToken"));
+
+    const localToken = localStorage.getItem("userToken");
+    const finalToken = token || localToken;
+
+    if (!finalToken) {
+      console.warn("❌ No token found — cannot fetch order details");
+      return;
+    }
+
+    dispatch(
+      fetchOrderDetailById({
+        orderId: id,
+        token: finalToken,
+      })
+    );
+  }, [dispatch, id, token]);
+
+  // Agar dono jagah token na ho to user ko message dikhao
+  if (!localStorage.getItem("userToken") && !token) {
+    return (
+      <p className="p-6 text-center text-red-500 font-medium">
+        You must be logged in to view order details.
+      </p>
+    );
+  }
+
+  if (loading) {
+    return <p className="p-6 text-center">Loading order details...</p>;
+  }
+
+  if (error) {
+    return <p className="p-6 text-center text-red-500 font-medium">{error}</p>;
+  }
+
+  if (!order?._id) {
+    return <p className="p-6 text-center text-gray-500">Order not found.</p>;
+  }
+
+  // Check if current path starts with /admin/orders (admin came here)
+  const isAdminRoute = location.pathname.startsWith("/admin/orders");
+
+  return (
+    <div className="max-w-7xl mx-auto p-4 sm:p-6">
+      <h2 className="text-2xl md:text-3xl font-bold mb-6">Order Details</h2>
+
+      <div className="p-4 sm:p-6 rounded-lg border">
+        {/* Order header */}
+        <div className="flex flex-col sm:flex-row justify-between mb-8">
+          <div>
+            <h3 className="text-lg md:text-xl font-semibold">
+              Order Id: #{order._id}
+            </h3>
+            <p className="text-gray-600">
+              {new Date(order.createdAt).toLocaleDateString()}{" "}
+              {new Date(order.createdAt).toLocaleTimeString()}
+            </p>
+          </div>
+          <div className="flex flex-col items-start sm:items-end mt-4 sm:mt-0">
+            <span
+              className={`${
+                order.isPaid
+                  ? "bg-green-100 text-green-700"
+                  : "bg-red-100 text-red-700"
+              } px-3 py-1 rounded-full text-sm font-medium mb-2`}
+            >
+              {order.isPaid ? "Paid" : "Unpaid"}
+            </span>
+            <span
+              className={`${
+                order.orderStatus
+                  ? "bg-green-100 text-green-700"
+                  : "bg-yellow-100 text-yellow-700"
+              } px-3 py-1 rounded-full text-sm font-medium`}
+            >
+              {order.orderStatus}
+            </span>
+          </div>
+        </div>
+
+        {/* Payment & Shipping */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 mb-8">
+          <div>
+            <h4 className="text-lg font-semibold mb-2">Payment Info</h4>
+            <p>Method: {order.paymentMethod || order.paymentmethod}</p>
+            <p>Status: {order.isPaid ? "Paid" : "Unpaid"}</p>
+          </div>
+          <div>
+            <h4 className="text-lg font-semibold mb-2">Shipping Info</h4>
+            <p>
+              Address: {order.shippingAddress?.city},{" "}
+              {order.shippingAddress?.country}
+            </p>
+          </div>
+        </div>
+
+        {/* Items Table */}
+        <div>
+          <h4 className="text-lg font-semibold mb-4">Products</h4>
+          <div className="overflow-x-auto">
+            <table className="min-w-full border border-gray-200 divide-y divide-gray-200">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="text-left px-4 py-3">Name</th>
+                  <th className="text-left px-4 py-3">Unit Price</th>
+                  <th className="text-left px-4 py-3">Quantity</th>
+                  <th className="text-left px-4 py-3">Total</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 bg-white">
+                {order.orderItems?.map((item) => (
+                  <tr key={item._id}>
+                    <td className="px-4 py-3 flex items-center gap-3">
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className="w-12 h-12 object-cover rounded border"
+                      />
+                      <span className="font-medium text-gray-800">{item.name}</span>
+                    </td>
+                    <td className="px-4 py-3">${item.price.toFixed(2)}</td>
+                    <td className="px-4 py-3">{item.qty || item.quantity}</td>
+                    <td className="px-4 py-3 font-semibold">
+                      ${(item.price * (item.qty || item.quantity)).toFixed(2)}
+                    </td>
+                  </tr>
+                ))}
+                <tr className="bg-gray-50">
+                  <td colSpan="3" className="px-4 py-3 text-right font-semibold">
+                    Subtotal:
+                  </td>
+                  <td className="px-4 py-3 font-bold">${order.totalPrice?.toFixed(2)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Conditional Back Link */}
+        {isAdminRoute ? (
+          <Link
+            to="/admin"
+            className="inline-block mt-6 text-blue-500 hover:underline"
+          >
+            ← Go Back to Dashboard
+          </Link>
+        ) : (
+          <Link
+            to="/my-order"
+            className="inline-block mt-6 text-blue-500 hover:underline"
+          >
+            ← Back to My Orders
+          </Link>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default OrderDetailPage;
