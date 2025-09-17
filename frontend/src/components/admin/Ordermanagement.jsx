@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useDispatch } from "react-redux";
-import { deleteOrderById } from "../../redux/slices/adminOrderSlice";  // Assuming slice ka path yahi hai
+import { deleteOrderById } from "../../redux/slices/adminOrderSlice";
 
 function AdminOrders() {
   const [orders, setOrders] = useState([]);
@@ -17,9 +17,9 @@ function AdminOrders() {
       if (!token) throw new Error("No token found");
 
       const config = { headers: { Authorization: `Bearer ${token}` } };
-
       const res = await axios.get("/api/admin/orders", config);
-      setOrders(res.data.orders);
+
+      setOrders(res.data?.orders || []); // ✅ safe fallback
       setError(null);
     } catch (err) {
       setError(err.response?.data?.message || err.message);
@@ -68,10 +68,16 @@ function AdminOrders() {
 
       const config = { headers: { Authorization: `Bearer ${token}` } };
 
-      await axios.put(`/api/admin/orders/${orderId}/payment`, { isPaid: newIsPaid }, config);
+      await axios.put(
+        `/api/admin/orders/${orderId}/payment`,
+        { isPaid: newIsPaid },
+        config
+      );
 
       setOrders((prev) =>
-        prev.map((order) => (order._id === orderId ? { ...order, isPaid: newIsPaid } : order))
+        prev.map((order) =>
+          order._id === orderId ? { ...order, isPaid: newIsPaid } : order
+        )
       );
     } catch (err) {
       alert("Failed to update payment status: " + (err.response?.data?.message || err.message));
@@ -80,14 +86,12 @@ function AdminOrders() {
     }
   };
 
-  // Delete order handler
   const deleteOrder = async (orderId) => {
     if (!window.confirm("Are you sure you want to delete this order?")) return;
 
     setUpdatingOrderId(orderId);
     try {
       await dispatch(deleteOrderById(orderId)).unwrap();
-
       setOrders((prev) => prev.filter((order) => order._id !== orderId));
       alert("Order deleted successfully");
     } catch (err) {
@@ -115,11 +119,11 @@ function AdminOrders() {
                 <th className="py-3 px-4">Status</th>
                 <th className="py-3 px-4">Paid</th>
                 <th className="py-3 px-4 text-center">Action</th>
-                <th className="py-3 px-4 text-center ">Delete</th> {/* New Delete column */}
+                <th className="py-3 px-4 text-center">Delete</th>
               </tr>
             </thead>
             <tbody>
-              {orders.length === 0 ? (
+              {orders?.length === 0 ? ( // ✅ safe check
                 <tr>
                   <td colSpan="7" className="text-center py-5 text-gray-500 italic">
                     🚫 No orders found
@@ -150,12 +154,16 @@ function AdminOrders() {
                         type="checkbox"
                         disabled={updatingOrderId === order._id}
                         checked={!!order.isPaid}
-                        onChange={(e) => updatePaymentStatus(order._id, e.target.checked)}
+                        onChange={(e) =>
+                          updatePaymentStatus(order._id, e.target.checked)
+                        }
                       />
                     </td>
                     <td className="py-3 px-4 text-center">
                       {updatingOrderId === order._id ? (
-                        <span className="text-sm text-blue-600 font-semibold">Updating...</span>
+                        <span className="text-sm text-blue-600 font-semibold">
+                          Updating...
+                        </span>
                       ) : (
                         "-"
                       )}
@@ -164,7 +172,7 @@ function AdminOrders() {
                       <button
                         disabled={updatingOrderId === order._id}
                         onClick={() => deleteOrder(order._id)}
-                        className="text-red bg-yellow-100 text-yellow px-3 py-1 rounded-full text-sm "
+                        className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-sm"
                       >
                         Delete
                       </button>
