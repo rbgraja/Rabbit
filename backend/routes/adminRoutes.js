@@ -63,6 +63,7 @@ router.delete("/users/:id", protect, authorizeRoles("admin"), async (req, res) =
 /* ------------------------ Orders ------------------------ */
 
 router.get("/orders", protect, authorizeRoles("admin"), async (req, res) => {
+  
   try {
     const orders = await Order.find().populate("user", "name email").sort({ createdAt: -1 });
        console.log("📦 Admin Orders from DB:", orders); // Debug
