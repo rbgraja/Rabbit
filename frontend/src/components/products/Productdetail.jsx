@@ -66,12 +66,30 @@ function Productdetail({ productId: propProductId }) {
   }, [selectedProduct]);
 
   const handleQuantityChange = (type) => {
-    setQuantity((prev) => (type === 'plus' ? prev + 1 : Math.max(1, prev - 1)));
+    setQuantity((prev) => {
+      if (type === 'plus') {
+        // ✅ prevent exceeding stock
+        if (prev < selectedProduct.stock) {
+          return prev + 1;
+        } else {
+          toast.error(`Only ${selectedProduct.stock} items available in stock`);
+          return prev;
+        }
+      } else {
+        return Math.max(1, prev - 1);
+      }
+    });
   };
 
   const handleAddToCart = () => {
     if (!selectedColor || !selectedSize) {
       toast.error('Please select a size and color');
+      return;
+    }
+
+    // ✅ Prevent adding more than stock
+    if (quantity > selectedProduct.stock) {
+      toast.error(`You can only add up to ${selectedProduct.stock} items`);
       return;
     }
 
@@ -92,6 +110,7 @@ function Productdetail({ productId: propProductId }) {
       .catch(() => toast.error('Failed to add product to cart'))
       .finally(() => setIsButtonDisabled(false));
   };
+
 
   if (loading) return <p className="text-center text-gray-500">Loading product...</p>;
   if (error) return <p className="text-center text-red-500">Error: {error}</p>;
