@@ -10,11 +10,11 @@ export const fetchAdminOrders = createAsyncThunk(
   "adminOrders/fetchAll",
   async (_, { rejectWithValue, getState }) => {
     try {
-      const token = getState().user?.user?.token;
+      const token = getState().user?.user?.token || localStorage.getItem("userToken");
       const res = await axios.get(`${BASE_URL}/api/admin/orders`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      return res.data.orders;
+      return res.data?.orders || [];
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || "Failed to fetch orders");
     }
@@ -26,11 +26,11 @@ export const getAdminOrderById = createAsyncThunk(
   "adminOrders/getById",
   async (id, { rejectWithValue, getState }) => {
     try {
-      const token = getState().user?.user?.token;
+      const token = getState().user?.user?.token || localStorage.getItem("userToken");
       const res = await axios.get(`${BASE_URL}/api/admin/orders/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      return res.data.order;
+      return res.data?.order || null;
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || "Failed to fetch order detail");
     }
@@ -42,15 +42,13 @@ export const updateOrderStatus = createAsyncThunk(
   "adminOrders/updateStatus",
   async ({ id, status }, { rejectWithValue, getState }) => {
     try {
-      const token = getState().user?.user?.token;
+      const token = getState().user?.user?.token || localStorage.getItem("userToken");
       const res = await axios.put(
         `${BASE_URL}/api/admin/orders/${id}/status`,
         { status },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
-      return res.data.order;
+      return res.data?.order || null;
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || "Failed to update status");
     }
@@ -62,15 +60,13 @@ export const updateOrderPaymentStatus = createAsyncThunk(
   "adminOrders/updatePaymentStatus",
   async ({ id, isPaid }, { rejectWithValue, getState }) => {
     try {
-      const token = getState().user?.user?.token;
+      const token = getState().user?.user?.token || localStorage.getItem("userToken");
       const res = await axios.put(
         `${BASE_URL}/api/admin/orders/${id}/payment`,
         { isPaid },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
-      return res.data.order;
+      return res.data?.order || null;
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || "Failed to update payment status");
     }
@@ -80,9 +76,9 @@ export const updateOrderPaymentStatus = createAsyncThunk(
 // ❌ Delete an order
 export const deleteOrderById = createAsyncThunk(
   "adminOrders/delete",
-  async (id, { rejectWithValue }) => {
+  async (id, { rejectWithValue, getState }) => {
     try {
-      const token = localStorage.getItem("userToken");
+      const token = getState().user?.user?.token || localStorage.getItem("userToken");
       if (!token) throw new Error("No token found");
 
       await axios.delete(`${BASE_URL}/api/admin/orders/${id}`, {
@@ -95,7 +91,6 @@ export const deleteOrderById = createAsyncThunk(
     }
   }
 );
-
 
 /* ------------------ Slice ------------------ */
 
@@ -118,13 +113,16 @@ const adminOrderSlice = createSlice({
       state.orderDetail = null;
     },
     calculateSummary(state) {
-      // Use orderStatus field, not status
-      const deliveredOrders = state.orders.filter((o) => o.orderStatus === "Delivered");
+      if (!Array.isArray(state.orders)) {
+        state.orders = [];
+      }
 
-      state.totalSales = deliveredOrders.length;
+      const deliveredOrders = state.orders.filter((o) => o?.orderStatus === "Delivered");
+
+      state.totalSales = deliveredOrders.length || 0;
 
       state.totalRevenue = deliveredOrders.reduce((acc, order) => {
-        return acc + (order.totalPrice || 0);
+        return acc + (order?.totalPrice || 0);
       }, 0);
 
       // Optional: Assuming profit = 20% of revenue (for demo purpose)
@@ -141,12 +139,13 @@ const adminOrderSlice = createSlice({
       })
       .addCase(fetchAdminOrders.fulfilled, (state, action) => {
         state.loading = false;
-        state.orders = action.payload;
+        state.orders = action.payload || [];
         adminOrderSlice.caseReducers.calculateSummary(state); // 👈 auto calculate on fetch
       })
       .addCase(fetchAdminOrders.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+        state.orders = [];
       })
 
       // 🔎 Single order
@@ -162,6 +161,7 @@ const adminOrderSlice = createSlice({
       .addCase(getAdminOrderById.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+        state.orderDetail = null;
       })
 
       // 🟡 Update order status
@@ -170,14 +170,16 @@ const adminOrderSlice = createSlice({
       })
       .addCase(updateOrderStatus.fulfilled, (state, action) => {
         state.loading = false;
-        const index = state.orders.findIndex((o) => o._id === action.payload._id);
-        if (index !== -1) {
-          state.orders[index] = action.payload;
+        if (action.payload) {
+          const index = state.orders.findIndex((o) => o._id === action.payload._id);
+          if (index !== -1) {
+            state.orders[index] = action.payload;
+          }
+          if (state.orderDetail && state.orderDetail._id === action.payload._id) {
+            state.orderDetail = action.payload;
+          }
         }
-        if (state.orderDetail && state.orderDetail._id === action.payload._id) {
-          state.orderDetail = action.payload;
-        }
-        adminOrderSlice.caseReducers.calculateSummary(state); // Recalculate
+        adminOrderSlice.caseReducers.calculateSummary(state);
       })
       .addCase(updateOrderStatus.rejected, (state, action) => {
         state.loading = false;
@@ -190,14 +192,16 @@ const adminOrderSlice = createSlice({
       })
       .addCase(updateOrderPaymentStatus.fulfilled, (state, action) => {
         state.loading = false;
-        const index = state.orders.findIndex((o) => o._id === action.payload._id);
-        if (index !== -1) {
-          state.orders[index] = action.payload;
+        if (action.payload) {
+          const index = state.orders.findIndex((o) => o._id === action.payload._id);
+          if (index !== -1) {
+            state.orders[index] = action.payload;
+          }
+          if (state.orderDetail && state.orderDetail._id === action.payload._id) {
+            state.orderDetail = action.payload;
+          }
         }
-        if (state.orderDetail && state.orderDetail._id === action.payload._id) {
-          state.orderDetail = action.payload;
-        }
-        adminOrderSlice.caseReducers.calculateSummary(state); // Recalculate
+        adminOrderSlice.caseReducers.calculateSummary(state);
       })
       .addCase(updateOrderPaymentStatus.rejected, (state, action) => {
         state.loading = false;
@@ -211,7 +215,7 @@ const adminOrderSlice = createSlice({
       .addCase(deleteOrderById.fulfilled, (state, action) => {
         state.loading = false;
         state.orders = state.orders.filter((o) => o._id !== action.payload);
-        adminOrderSlice.caseReducers.calculateSummary(state); // Recalculate
+        adminOrderSlice.caseReducers.calculateSummary(state);
       })
       .addCase(deleteOrderById.rejected, (state, action) => {
         state.loading = false;

@@ -41,7 +41,7 @@ function Checkout() {
 
     const orderData = {
       orderItems: cartItems.map((item) => ({
-        productId: item._id,
+        productId: item.productId,
         name: item.name,
         image: item.image,
         price: item.price,
