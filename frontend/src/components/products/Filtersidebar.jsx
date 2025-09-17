@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
-import axios from 'axios';
 import { fetchProductFilters, setFilters } from '../../redux/slices/productSlice';
 
 function Filtersidebar() {
@@ -23,37 +22,13 @@ function Filtersidebar() {
 
   const [filters, setfilters] = useState(defaultFilters);
 
-  // ✅ Dynamic filter options from backend
-  const [filterOptions, setFilterOptions] = useState({
-    categories: [],
-    colors: [],
-    sizes: [],
-    materials: [],
-    brands: [],
-    genders: [],
-  });
+  const categories = ['Top Wear', 'Bottom Wear'];
+  const colors = ['brown', 'yellow', 'black', 'white', 'blue', 'green'];
+  const sizes = ['XS', 'S', 'M', 'L', 'X', 'XL', 'XXL'];
+  const materials = ['cotton', 'wool', 'denim', 'silk'];
+  const brands = ['urban', 'street', 'beech', 'modern fit'];
+  const genders = ['Men', 'Women'];
 
-  // Load available filters from backend
-  useEffect(() => {
-    const fetchFilters = async () => {
-      try {
-        const res = await axios.get("/api/products/filters");
-        setFilterOptions({
-          categories: res.data.categories || [],
-          colors: res.data.colors || [],
-          sizes: res.data.sizes || [],
-          materials: res.data.materials || [],
-          brands: res.data.brands || [],
-          genders: res.data.genders || [],
-        });
-      } catch (err) {
-        console.error("Error fetching filters:", err);
-      }
-    };
-    fetchFilters();
-  }, []);
-
-  // URL → State
   useEffect(() => {
     const params = Object.fromEntries([...searchparams]);
     const parsed = {
@@ -111,7 +86,7 @@ function Filtersidebar() {
     setsearchparams({});
     navigate('?');
     dispatch(setFilters(defaultFilters));
-    dispatch(fetchProductFilters(defaultFilters));
+    dispatch(fetchProductFilters(defaultFilters)); // ✅ re-fetch all
   };
 
   return (
@@ -128,134 +103,120 @@ function Filtersidebar() {
       </div>
 
       {/* Category */}
-      {filterOptions.categories.length > 0 && (
-        <div className="mb-6">
-          <label className="block text-gray-600 font-medium mb-2">Category</label>
-          {filterOptions.categories.map((category) => (
-            <div key={category} className="flex items-center mb-1">
-              <input
-                name="category"
-                type="radio"
-                value={category}
-                checked={filters.category === category}
-                onChange={handlefilterchange}
-                className="mr-2"
-              />
-              <span>{category}</span>
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="mb-6">
+        <label className="block text-gray-600 font-medium mb-2">Category</label>
+        {categories.map((category) => (
+          <div key={category} className="flex items-center mb-1">
+            <input
+              name="category"
+              type="radio"
+              value={category}
+              checked={filters.category === category}
+              onChange={handlefilterchange}
+              className="mr-2"
+            />
+            <span>{category}</span>
+          </div>
+        ))}
+      </div>
 
       {/* Gender */}
-      {filterOptions.genders.length > 0 && (
-        <div className="mb-6">
-          <label className="block text-gray-600 font-medium mb-2">Gender</label>
-          {filterOptions.genders.map((g) => (
-            <div key={g} className="flex items-center mb-1">
-              <input
-                name="gender"
-                type="radio"
-                value={g}
-                checked={filters.gender === g}
-                onChange={handlefilterchange}
-                className="mr-2"
-              />
-              <span>{g}</span>
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="mb-6">
+        <label className="block text-gray-600 font-medium mb-2">Gender</label>
+        {genders.map((g) => (
+          <div key={g} className="flex items-center mb-1">
+            <input
+              name="gender"
+              type="radio"
+              value={g}
+              checked={filters.gender === g}
+              onChange={handlefilterchange}
+              className="mr-2"
+            />
+            <span>{g}</span>
+          </div>
+        ))}
+      </div>
 
       {/* Color */}
-      {filterOptions.colors.length > 0 && (
-        <div className="mb-6">
-          <label className="block text-gray-600 font-medium mb-2">Color</label>
-          <div className="flex flex-wrap gap-2">
-            {filterOptions.colors.map((color) => (
-              <button
-                key={color}
-                type="button"
-                onClick={() =>
-                  handlefilterchange({
-                    target: { name: 'color', value: color, type: 'button' },
-                  })
-                }
-                className={`w-8 h-8 rounded-full border transition hover:scale-105 ${
-                  filters.color === color ? 'ring-2 ring-blue-500' : 'border-gray-300'
-                }`}
-                style={{ backgroundColor: color }}
-              />
-            ))}
-          </div>
+      <div className="mb-6">
+        <label className="block text-gray-600 font-medium mb-2">Color</label>
+        <div className="flex flex-wrap gap-2">
+          {colors.map((color) => (
+            <button
+              key={color}
+              type="button"
+              onClick={() =>
+                handlefilterchange({
+                  target: { name: 'color', value: color, type: 'button' },
+                })
+              }
+              className={`w-8 h-8 rounded-full border transition hover:scale-105 ${
+                filters.color === color ? 'ring-2 ring-blue-500' : 'border-gray-300'
+              }`}
+              style={{ backgroundColor: color }}
+            />
+          ))}
         </div>
-      )}
+      </div>
 
       {/* Size */}
-      {filterOptions.sizes.length > 0 && (
-        <div className="mb-6">
-          <label className="block text-gray-600 font-medium mb-2">Size</label>
-          {filterOptions.sizes.map((size) => (
-            <div key={size} className="flex items-center mb-1">
-              <input
-                name="size"
-                type="checkbox"
-                value={size}
-                checked={filters.size.includes(size)}
-                onChange={handlefilterchange}
-                className="mr-2"
-              />
-              <span>{size}</span>
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="mb-6">
+        <label className="block text-gray-600 font-medium mb-2">Size</label>
+        {sizes.map((size) => (
+          <div key={size} className="flex items-center mb-1">
+            <input
+              name="size"
+              type="checkbox"
+              value={size}
+              checked={filters.size.includes(size)}
+              onChange={handlefilterchange}
+              className="mr-2"
+            />
+            <span>{size}</span>
+          </div>
+        ))}
+      </div>
 
       {/* Material */}
-      {filterOptions.materials.length > 0 && (
-        <div className="mb-6">
-          <label className="block text-gray-600 font-medium mb-2">Material</label>
-          {filterOptions.materials.map((mat) => (
-            <div key={mat} className="flex items-center mb-1">
-              <input
-                name="material"
-                type="checkbox"
-                value={mat}
-                checked={filters.material.includes(mat)}
-                onChange={handlefilterchange}
-                className="mr-2"
-              />
-              <span>{mat}</span>
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="mb-6">
+        <label className="block text-gray-600 font-medium mb-2">Material</label>
+        {materials.map((mat) => (
+          <div key={mat} className="flex items-center mb-1">
+            <input
+              name="material"
+              type="checkbox"
+              value={mat}
+              checked={filters.material.includes(mat)}
+              onChange={handlefilterchange}
+              className="mr-2"
+            />
+            <span>{mat}</span>
+          </div>
+        ))}
+      </div>
 
       {/* Brand */}
-      {filterOptions.brands.length > 0 && (
-        <div className="mb-6">
-          <label className="block text-gray-600 font-medium mb-2">Brand</label>
-          {filterOptions.brands.map((b) => (
-            <div key={b} className="flex items-center mb-1">
-              <input
-                name="brand"
-                type="checkbox"
-                value={b}
-                checked={filters.brand.includes(b)}
-                onChange={handlefilterchange}
-                className="mr-2"
-              />
-              <span>{b}</span>
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="mb-6">
+        <label className="block text-gray-600 font-medium mb-2">Brand</label>
+        {brands.map((b) => (
+          <div key={b} className="flex items-center mb-1">
+            <input
+              name="brand"
+              type="checkbox"
+              value={b}
+              checked={filters.brand.includes(b)}
+              onChange={handlefilterchange}
+              className="mr-2"
+            />
+            <span>{b}</span>
+          </div>
+        ))}
+      </div>
 
       {/* Price Range */}
       <div className="mb-8">
-        <label className="block text-gray-600 font-medium mb-2">
-          Price Range
-        </label>
+        <label className="block text-gray-600 font-medium mb-2">Price Range</label>
         <div className="flex justify-between items-center mb-2 gap-2">
           <input
             type="number"
