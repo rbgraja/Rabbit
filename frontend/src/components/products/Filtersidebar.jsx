@@ -18,7 +18,6 @@ function Filtersidebar() {
   });
 
   const [loadingFilters, setLoadingFilters] = useState(true);
-  const [errorFilters, setErrorFilters] = useState(null);
 
   const defaultFilters = {
     category: "",
@@ -35,42 +34,40 @@ function Filtersidebar() {
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || "";
 
-  // 🔹 Fetch filter options with retry
-useEffect(() => {
-  let isMounted = true;
-  const fetchFilters = async () => {
-    try {
-      const { data } = await axios.get(`${API_BASE_URL}/api/products/filters`);
-      if (!isMounted) return;
+  // 🔹 Fetch filters with fallback
+  useEffect(() => {
+    let isMounted = true;
+    const fetchFilters = async () => {
+      try {
+        const { data } = await axios.get(`${API_BASE_URL}/api/products/filters`);
+        if (!isMounted) return;
 
-      setFilterOptions({
-        categories: data.categories || [],
-        sizes: data.sizes || [],
-        materials: data.materials || [],
-        brands: data.brands || [],
-        genders: data.genders || [],
-      });
-      setLoadingFilters(false);
-    } catch (err) {
-      console.warn("Failed to fetch filters, using fallback.", err.message);
-      // fallback: agar live fetch fail ho jaye
-      if (isMounted) {
         setFilterOptions({
-          categories: ["Shirts", "Pants", "Shoes"],
-          sizes: ["S", "M", "L", "XL"],
-          materials: ["Cotton", "Leather"],
-          brands: ["BrandA", "BrandB"],
-          genders: ["Male", "Female"],
+          categories: data.categories || [],
+          sizes: data.sizes || [],
+          materials: data.materials || [],
+          brands: data.brands || [],
+          genders: data.genders || [],
         });
         setLoadingFilters(false);
+      } catch (err) {
+        console.warn("Failed to fetch filters, using fallback.", err.message);
+        if (isMounted) {
+          setFilterOptions({
+            categories: ["Shirts", "Pants", "Shoes"],
+            sizes: ["S", "M", "L", "XL"],
+            materials: ["Cotton", "Leather"],
+            brands: ["BrandA", "BrandB"],
+            genders: ["Male", "Female"],
+          });
+          setLoadingFilters(false);
+        }
       }
-    }
-  };
+    };
 
-  fetchFilters();
-  return () => { isMounted = false };
-}, [API_BASE_URL]);
-
+    fetchFilters();
+    return () => { isMounted = false };
+  }, [API_BASE_URL]);
 
   // 🔹 Parse URL params
   useEffect(() => {
@@ -89,17 +86,14 @@ useEffect(() => {
     dispatch(setFilters(parsed));
   }, [searchParams]);
 
-  // 🔹 Handle change
+  // 🔹 Handle filter change
   const handleFilterChange = (e) => {
     const { name, value, checked, type } = e.target;
     const updated = { ...filters };
 
     if (type === "checkbox") {
-      if (checked) {
-        updated[name] = [...(updated[name] || []), value];
-      } else {
-        updated[name] = updated[name].filter((v) => v !== value);
-      }
+      if (checked) updated[name] = [...(updated[name] || []), value];
+      else updated[name] = updated[name].filter((v) => v !== value);
     } else if (type === "radio" || type === "number" || type === "range") {
       updated[name] = type === "number" || type === "range" ? Number(value) : value;
     } else {
@@ -110,6 +104,7 @@ useEffect(() => {
     updateURLParams(updated);
   };
 
+  // 🔹 Update URL params
   const updateURLParams = (newFilters) => {
     const params = new URLSearchParams();
     Object.entries(newFilters).forEach(([key, val]) => {
@@ -121,6 +116,7 @@ useEffect(() => {
     dispatch(setFilters(newFilters));
   };
 
+  // 🔹 Reset filters
   const resetFilters = () => {
     setFiltersState(defaultFilters);
     setSearchParams({});
@@ -129,27 +125,12 @@ useEffect(() => {
   };
 
   if (loadingFilters) return <p className="p-4 text-gray-500">Loading filters...</p>;
-  if (errorFilters)
-    return (
-      <div className="p-4 text-red-600">
-        <p>{errorFilters}</p>
-        <button
-          onClick={() => window.location.reload()}
-          className="mt-2 px-4 py-2 border rounded border-red-500 hover:bg-red-100"
-        >
-          Retry
-        </button>
-      </div>
-    );
 
   return (
     <div className="p-4">
       <h3 className="text-xl font-medium text-gray-800 mb-4">Filter</h3>
       <div className="mb-6">
-        <button
-          onClick={resetFilters}
-          className="text-sm text-red-600 hover:text-red-800 border border-red-500 px-4 py-2 rounded-md"
-        >
+        <button onClick={resetFilters} className="text-sm text-red-600 hover:text-red-800 border border-red-500 px-4 py-2 rounded-md">
           Reset Filters
         </button>
       </div>
