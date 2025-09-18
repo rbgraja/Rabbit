@@ -16,6 +16,9 @@ function Adminhomepage() {
   const [recentOrders, setRecentOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // 🔹 Base URL (env se lo, warna relative chalega localhost proxy pe)
+  const API_BASE_URL = import.meta.env.VITE_API_URL || "";
+
   console.log("👤 User:", user);
   console.log("📊 Stats:", stats);
   console.log("📦 Recent Orders:", recentOrders);
@@ -46,8 +49,8 @@ function Adminhomepage() {
         console.log("🔄 Fetching Admin Dashboard data...");
 
         const [statsRes, ordersRes] = await Promise.all([
-          axios.get('/api/admin/stats', config),
-          axios.get('/api/admin/recent-orders?limit=5', config),
+          axios.get(`${API_BASE_URL}/api/admin/stats`, config),
+          axios.get(`${API_BASE_URL}/api/admin/recent-orders?limit=5`, config),
         ]);
 
         const statsData = {
@@ -76,7 +79,7 @@ function Adminhomepage() {
     };
 
     fetchDashboardData();
-  }, []);
+  }, [API_BASE_URL]);
 
   return (
     <div className='max-w-7xl mx-auto p-6'>
