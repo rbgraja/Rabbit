@@ -13,7 +13,7 @@ function Gendercollectionsection() {
                     <h2 className='text-2xl font-bold text-gray-900 mb-3'>
                         Women's Collection
                     </h2>
-                    <Link to='/collections/all?gender=Women' className='text-gray-900 underline'>
+                    <Link to='/collection?gender=Women' className='text-gray-900 underline'>
                         Shop now 
                     </Link>
                 </div>
@@ -23,9 +23,9 @@ function Gendercollectionsection() {
                 <img src={menimage} alt="men" className='w-full h-[700px] object-cover ' />
                 <div className='absolute bottom-8 left-8 bg-white bg-opacity-90 p-4'>
                     <h2 className='text-2xl font-bold text-gray-900 mb-3'>
-                        Women's Collection
+                        Men's Collection
                     </h2>
-                    <Link to='/collections/all?gender=Men' className='text-gray-900 underline'>
+                    <Link to='/collection?gender=Men' className='text-gray-900 underline'>
                         Shop now 
                     </Link>
                 </div>
