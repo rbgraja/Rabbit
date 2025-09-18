@@ -46,10 +46,12 @@ function Filtersidebar() {
       setErrorFilters(null);
       while (retries < maxRetries) {
         try {
+          if (!API_BASE_URL) throw new Error("API URL not set");
           const { data } = await axios.get(`${API_BASE_URL}/api/products/filters`);
           if (!isMounted) return;
 
           if (
+            data &&
             Array.isArray(data.categories) &&
             Array.isArray(data.sizes) &&
             Array.isArray(data.materials) &&
@@ -72,7 +74,9 @@ function Filtersidebar() {
           retries += 1;
           console.warn(`Retry ${retries} failed: ${err.message}`);
           if (retries >= maxRetries && isMounted) {
-            setErrorFilters("Failed to load filters. Please refresh.");
+            setErrorFilters(
+              "Failed to load filters. Please check API URL or network and refresh."
+            );
             setLoadingFilters(false);
           }
         }
@@ -121,15 +125,11 @@ function Filtersidebar() {
     updateURLParams(updated);
   };
 
-  // 🔹 Update URL params
   const updateURLParams = (newFilters) => {
     const params = new URLSearchParams();
     Object.entries(newFilters).forEach(([key, val]) => {
-      if (Array.isArray(val) && val.length > 0) {
-        params.set(key, val.join(","));
-      } else if (val !== "" && val !== 0) {
-        params.set(key, val);
-      }
+      if (Array.isArray(val) && val.length > 0) params.set(key, val.join(","));
+      else if (val !== "" && val !== 0) params.set(key, val);
     });
     setSearchParams(params);
     navigate(`?${params.toString()}`);
@@ -144,20 +144,27 @@ function Filtersidebar() {
   };
 
   if (loadingFilters) return <p className="p-4 text-gray-500">Loading filters...</p>;
-  if (errorFilters) return (
-    <div className="p-4 text-red-600">
-      <p>{errorFilters}</p>
-      <button onClick={() => window.location.reload()} className="mt-2 px-4 py-2 border rounded border-red-500 hover:bg-red-100">
-        Retry
-      </button>
-    </div>
-  );
+  if (errorFilters)
+    return (
+      <div className="p-4 text-red-600">
+        <p>{errorFilters}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-2 px-4 py-2 border rounded border-red-500 hover:bg-red-100"
+        >
+          Retry
+        </button>
+      </div>
+    );
 
   return (
     <div className="p-4">
       <h3 className="text-xl font-medium text-gray-800 mb-4">Filter</h3>
       <div className="mb-6">
-        <button onClick={resetFilters} className="text-sm text-red-600 hover:text-red-800 border border-red-500 px-4 py-2 rounded-md">
+        <button
+          onClick={resetFilters}
+          className="text-sm text-red-600 hover:text-red-800 border border-red-500 px-4 py-2 rounded-md"
+        >
           Reset Filters
         </button>
       </div>
