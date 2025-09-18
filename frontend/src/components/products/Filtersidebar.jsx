@@ -17,6 +17,9 @@ function Filtersidebar() {
     genders: [],
   });
 
+  const [loadingFilters, setLoadingFilters] = useState(true);
+  const [errorFilters, setErrorFilters] = useState(null);
+
   const defaultFilters = {
     category: "",
     gender: "",
@@ -32,26 +35,54 @@ function Filtersidebar() {
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || "";
 
-  // 🔹 Backend se filter options fetch with safety check
+  // 🔹 Backend se filter options fetch with retry
   useEffect(() => {
-    let isMounted = true; // ✅ prevent state update if component unmounted
-    const fetchOptions = async () => {
-      try {
-        const { data } = await axios.get(`${API_BASE_URL}/api/products/filters`);
-        if (!isMounted) return;
+    let isMounted = true;
+    let retries = 0;
+    const maxRetries = 3;
 
-        setFilterOptions({
-          categories: Array.isArray(data.categories) ? data.categories : [],
-          sizes: Array.isArray(data.sizes) ? data.sizes : [],
-          materials: Array.isArray(data.materials) ? data.materials : [],
-          brands: Array.isArray(data.brands) ? data.brands : [],
-          genders: Array.isArray(data.genders) ? data.genders : [],
-        });
-      } catch (err) {
-        console.error("❌ Error fetching filter options:", err.message);
+    const fetchOptions = async () => {
+      setLoadingFilters(true);
+      setErrorFilters(null);
+
+      while (retries < maxRetries) {
+        try {
+          const { data } = await axios.get(`${API_BASE_URL}/api/products/filters`);
+          if (!isMounted) return;
+
+          // Agar filters empty nahi hai, set karo
+          if (
+            Array.isArray(data.categories) &&
+            Array.isArray(data.sizes) &&
+            Array.isArray(data.materials) &&
+            Array.isArray(data.brands) &&
+            Array.isArray(data.genders)
+          ) {
+            setFilterOptions({
+              categories: data.categories || [],
+              sizes: data.sizes || [],
+              materials: data.materials || [],
+              brands: data.brands || [],
+              genders: data.genders || [],
+            });
+            setLoadingFilters(false);
+            return;
+          } else {
+            throw new Error("Empty filter options received");
+          }
+        } catch (err) {
+          retries += 1;
+          console.warn(`Retry ${retries} failed: ${err.message}`);
+          if (retries >= maxRetries && isMounted) {
+            setErrorFilters("Failed to load filters. Please refresh.");
+            setLoadingFilters(false);
+          }
+        }
       }
     };
+
     fetchOptions();
+
     return () => {
       isMounted = false;
     };
@@ -114,9 +145,26 @@ function Filtersidebar() {
     setsearchparams({});
     navigate("?");
     dispatch(setFilters(defaultFilters));
-    // 🔹 Optionally refresh products
     dispatch(fetchProductFilters(defaultFilters));
   };
+
+  if (loadingFilters) {
+    return <p className="p-4 text-gray-500">Loading filters...</p>;
+  }
+
+  if (errorFilters) {
+    return (
+      <div className="p-4 text-red-600">
+        <p>{errorFilters}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-2 px-4 py-2 border rounded border-red-500 hover:bg-red-100"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4">
