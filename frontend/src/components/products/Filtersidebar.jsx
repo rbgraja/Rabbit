@@ -36,56 +36,41 @@ function Filtersidebar() {
   const API_BASE_URL = import.meta.env.VITE_API_URL || "";
 
   // 🔹 Fetch filter options with retry
-  useEffect(() => {
-    let isMounted = true;
-    let retries = 0;
-    const maxRetries = 3;
+useEffect(() => {
+  let isMounted = true;
+  const fetchFilters = async () => {
+    try {
+      const { data } = await axios.get(`${API_BASE_URL}/api/products/filters`);
+      if (!isMounted) return;
 
-    const fetchOptions = async () => {
-      setLoadingFilters(true);
-      setErrorFilters(null);
-      while (retries < maxRetries) {
-        try {
-          if (!API_BASE_URL) throw new Error("API URL not set");
-          const { data } = await axios.get(`${API_BASE_URL}/api/products/filters`);
-          if (!isMounted) return;
-
-          if (
-            data &&
-            Array.isArray(data.categories) &&
-            Array.isArray(data.sizes) &&
-            Array.isArray(data.materials) &&
-            Array.isArray(data.brands) &&
-            Array.isArray(data.genders)
-          ) {
-            setFilterOptions({
-              categories: data.categories,
-              sizes: data.sizes,
-              materials: data.materials,
-              brands: data.brands,
-              genders: data.genders,
-            });
-            setLoadingFilters(false);
-            return;
-          } else {
-            throw new Error("Empty filter options received");
-          }
-        } catch (err) {
-          retries += 1;
-          console.warn(`Retry ${retries} failed: ${err.message}`);
-          if (retries >= maxRetries && isMounted) {
-            setErrorFilters(
-              "Failed to load filters. Please check API URL or network and refresh."
-            );
-            setLoadingFilters(false);
-          }
-        }
+      setFilterOptions({
+        categories: data.categories || [],
+        sizes: data.sizes || [],
+        materials: data.materials || [],
+        brands: data.brands || [],
+        genders: data.genders || [],
+      });
+      setLoadingFilters(false);
+    } catch (err) {
+      console.warn("Failed to fetch filters, using fallback.", err.message);
+      // fallback: agar live fetch fail ho jaye
+      if (isMounted) {
+        setFilterOptions({
+          categories: ["Shirts", "Pants", "Shoes"],
+          sizes: ["S", "M", "L", "XL"],
+          materials: ["Cotton", "Leather"],
+          brands: ["BrandA", "BrandB"],
+          genders: ["Male", "Female"],
+        });
+        setLoadingFilters(false);
       }
-    };
+    }
+  };
 
-    fetchOptions();
-    return () => { isMounted = false; };
-  }, [API_BASE_URL]);
+  fetchFilters();
+  return () => { isMounted = false };
+}, [API_BASE_URL]);
+
 
   // 🔹 Parse URL params
   useEffect(() => {
