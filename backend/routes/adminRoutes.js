@@ -61,19 +61,17 @@ router.delete("/users/:id", protect, authorizeRoles("admin"), async (req, res) =
 });
 
 /* ------------------------ Orders ------------------------ */
-
 router.get("/orders", protect, authorizeRoles("admin"), async (req, res) => {
   try {
-    const orders = await Order.find().sort({ createdAt: -1 }).lean();
+    const orders = await Order.find()
+      .populate("user", "name email") // 👈 ye user ka name/email la dega
+      .sort({ createdAt: -1 });
 
-    const ordersWithUser = await Promise.all(
-      orders.map(async (order) => {
-        const user = await User.findById(order.user).select("name email").lean();
-        return { ...order, user: user || null };
-      })
-    );
-
-    res.status(200).json({ success: true, count: ordersWithUser.length, orders: ordersWithUser });
+    res.status(200).json({
+      success: true,
+      count: orders.length,
+      orders
+    });
   } catch (err) {
     console.error("Error fetching orders:", err);
     res.status(500).json({ message: "Error fetching orders" });
