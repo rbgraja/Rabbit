@@ -16,8 +16,8 @@ function Adminhomepage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // 🔹 Base URL
-  const API_BASE_URL = import.meta.env.VITE_API_URL || "";
+  // 🔹 Base URL (same as AdminOrders me use ho raha hai)
+  const API_BASE_URL = import.meta.env.VITE_BACKGROUND_URL || "";
 
   // ✅ safeGet helper
   const safeGet = (obj, path, fallback = "N/A") => {
