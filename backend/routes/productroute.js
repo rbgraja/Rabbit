@@ -155,46 +155,69 @@ router.get("/", async (req, res) => {
   }
 });
 
+
 /**
  * ========================================================================
  * @route   GET /api/products/filters
- * @desc    Get available filter options dynamically from DB (with cache)
+ * @desc    Get available filter options dynamically from DB
  * @access  Public
  * ========================================================================
  */
-let filterCache = null;
-let lastFetch = 0;
-
 router.get("/filters", async (req, res) => {
   try {
-    // Cache 30 seconds
-    if (filterCache && Date.now() - lastFetch < 30 * 1000) {
-      return res.status(200).json(filterCache);
-    }
+    // Force arrays and filter falsy values
+    const categories = (await Product.distinct("category")) || [];
+    const colors = (await Product.distinct("colors")) || [];
+    const sizes = (await Product.distinct("sizes")) || [];
+    const materials = (await Product.distinct("material")) || [];
+    const brands = (await Product.distinct("brand")) || [];
+    const genders = (await Product.distinct("gender")) || [];
 
-    const [categories, colors, sizes, materials, brands, genders] = await Promise.all([
-      Product.distinct("category"),
-      Product.distinct("colors"),
-      Product.distinct("sizes"),
-      Product.distinct("material"),
-      Product.distinct("brand"),
-      Product.distinct("gender"),
-    ]);
-
-    filterCache = {
+    res.status(200).json({
       categories: categories.filter(Boolean),
       colors: colors.filter(Boolean),
       sizes: sizes.filter(Boolean),
       materials: materials.filter(Boolean),
       brands: brands.filter(Boolean),
       genders: genders.filter(Boolean),
-    };
-    lastFetch = Date.now();
-
-    res.status(200).json(filterCache);
+    });
   } catch (err) {
     console.error("❌ Fetch Filter Options Error:", err.message);
-    res.status(500).json({ message: "Server Error" });
+
+    // Retry logic (optional)
+    let retries = 0;
+    const maxRetries = 3;
+    let success = false;
+    let lastError = null;
+
+    while (retries < maxRetries && !success) {
+      try {
+        const categories = (await Product.distinct("category")) || [];
+        const colors = (await Product.distinct("colors")) || [];
+        const sizes = (await Product.distinct("sizes")) || [];
+        const materials = (await Product.distinct("material")) || [];
+        const brands = (await Product.distinct("brand")) || [];
+        const genders = (await Product.distinct("gender")) || [];
+
+        res.status(200).json({
+          categories: categories.filter(Boolean),
+          colors: colors.filter(Boolean),
+          sizes: sizes.filter(Boolean),
+          materials: materials.filter(Boolean),
+          brands: brands.filter(Boolean),
+          genders: genders.filter(Boolean),
+        });
+        success = true;
+      } catch (err2) {
+        retries++;
+        lastError = err2;
+        console.warn(`Retry ${retries} failed:`, err2.message);
+      }
+    }
+
+    if (!success) {
+      res.status(500).json({ message: "Server Error", error: lastError.message });
+    }
   }
 });
 

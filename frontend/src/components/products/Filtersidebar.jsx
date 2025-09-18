@@ -50,21 +50,17 @@ function Filtersidebar() {
           const { data } = await axios.get(`${API_BASE_URL}/api/products/filters`);
           if (!isMounted) return;
 
-          // Agar filters empty nahi hai, set karo
+          // Ensure all arrays exist
+          const categories = Array.isArray(data.categories) ? data.categories : [];
+          const sizes = Array.isArray(data.sizes) ? data.sizes : [];
+          const materials = Array.isArray(data.materials) ? data.materials : [];
+          const brands = Array.isArray(data.brands) ? data.brands : [];
+          const genders = Array.isArray(data.genders) ? data.genders : [];
+
           if (
-            Array.isArray(data.categories) &&
-            Array.isArray(data.sizes) &&
-            Array.isArray(data.materials) &&
-            Array.isArray(data.brands) &&
-            Array.isArray(data.genders)
+            categories.length || sizes.length || materials.length || brands.length || genders.length
           ) {
-            setFilterOptions({
-              categories: data.categories || [],
-              sizes: data.sizes || [],
-              materials: data.materials || [],
-              brands: data.brands || [],
-              genders: data.genders || [],
-            });
+            setFilterOptions({ categories, sizes, materials, brands, genders });
             setLoadingFilters(false);
             return;
           } else {
@@ -88,7 +84,7 @@ function Filtersidebar() {
     };
   }, [API_BASE_URL]);
 
-  // 🔹 URL se filters parse karna
+  // 🔹 Parse URL filters
   useEffect(() => {
     const params = Object.fromEntries([...searchparams]);
     const parsed = {
@@ -110,11 +106,8 @@ function Filtersidebar() {
     const updated = { ...filters };
 
     if (type === "checkbox") {
-      if (checked) {
-        updated[name] = [...(updated[name] || []), value];
-      } else {
-        updated[name] = updated[name].filter((v) => v !== value);
-      }
+      if (checked) updated[name] = [...(updated[name] || []), value];
+      else updated[name] = updated[name].filter((v) => v !== value);
     } else if (type === "radio" || type === "button" || type === "number" || type === "range") {
       updated[name] = type === "number" || type === "range" ? Number(value) : value;
     } else {
@@ -128,11 +121,8 @@ function Filtersidebar() {
   const updateURLparams = (newfilters) => {
     const params = new URLSearchParams();
     Object.entries(newfilters).forEach(([key, val]) => {
-      if (Array.isArray(val) && val.length > 0) {
-        params.set(key, val.join(","));
-      } else if (val !== "" && val !== 0) {
-        params.set(key, val);
-      }
+      if (Array.isArray(val) && val.length > 0) params.set(key, val.join(","));
+      else if (val !== "" && val !== 0) params.set(key, val);
     });
 
     setsearchparams(params);
@@ -148,11 +138,9 @@ function Filtersidebar() {
     dispatch(fetchProductFilters(defaultFilters));
   };
 
-  if (loadingFilters) {
-    return <p className="p-4 text-gray-500">Loading filters...</p>;
-  }
+  if (loadingFilters) return <p className="p-4 text-gray-500">Loading filters...</p>;
 
-  if (errorFilters) {
+  if (errorFilters)
     return (
       <div className="p-4 text-red-600">
         <p>{errorFilters}</p>
@@ -164,7 +152,6 @@ function Filtersidebar() {
         </button>
       </div>
     );
-  }
 
   return (
     <div className="p-4">
@@ -179,35 +166,34 @@ function Filtersidebar() {
         </button>
       </div>
 
-      {/* Category */}
+      {/* Map all filter categories */}
       {filterOptions.categories.length > 0 && (
         <div className="mb-6">
           <label className="block text-gray-600 font-medium mb-2">Category</label>
-          {filterOptions.categories.map((category) => (
-            <div key={category} className="flex items-center mb-1">
+          {filterOptions.categories.map((c) => (
+            <div key={c} className="flex items-center mb-1">
               <input
-                name="category"
                 type="radio"
-                value={category}
-                checked={filters.category === category}
+                name="category"
+                value={c}
+                checked={filters.category === c}
                 onChange={handlefilterchange}
                 className="mr-2"
               />
-              <span>{category}</span>
+              <span>{c}</span>
             </div>
           ))}
         </div>
       )}
 
-      {/* Gender */}
       {filterOptions.genders.length > 0 && (
         <div className="mb-6">
           <label className="block text-gray-600 font-medium mb-2">Gender</label>
           {filterOptions.genders.map((g) => (
             <div key={g} className="flex items-center mb-1">
               <input
-                name="gender"
                 type="radio"
+                name="gender"
                 value={g}
                 checked={filters.gender === g}
                 onChange={handlefilterchange}
@@ -219,55 +205,52 @@ function Filtersidebar() {
         </div>
       )}
 
-      {/* Size */}
       {filterOptions.sizes.length > 0 && (
         <div className="mb-6">
           <label className="block text-gray-600 font-medium mb-2">Size</label>
-          {filterOptions.sizes.map((size) => (
-            <div key={size} className="flex items-center mb-1">
+          {filterOptions.sizes.map((s) => (
+            <div key={s} className="flex items-center mb-1">
               <input
-                name="size"
                 type="checkbox"
-                value={size}
-                checked={filters.size.includes(size)}
+                name="size"
+                value={s}
+                checked={filters.size.includes(s)}
                 onChange={handlefilterchange}
                 className="mr-2"
               />
-              <span>{size}</span>
+              <span>{s}</span>
             </div>
           ))}
         </div>
       )}
 
-      {/* Material */}
       {filterOptions.materials.length > 0 && (
         <div className="mb-6">
           <label className="block text-gray-600 font-medium mb-2">Material</label>
-          {filterOptions.materials.map((mat) => (
-            <div key={mat} className="flex items-center mb-1">
+          {filterOptions.materials.map((m) => (
+            <div key={m} className="flex items-center mb-1">
               <input
-                name="material"
                 type="checkbox"
-                value={mat}
-                checked={filters.material.includes(mat)}
+                name="material"
+                value={m}
+                checked={filters.material.includes(m)}
                 onChange={handlefilterchange}
                 className="mr-2"
               />
-              <span>{mat}</span>
+              <span>{m}</span>
             </div>
           ))}
         </div>
       )}
 
-      {/* Brand */}
       {filterOptions.brands.length > 0 && (
         <div className="mb-6">
           <label className="block text-gray-600 font-medium mb-2">Brand</label>
           {filterOptions.brands.map((b) => (
             <div key={b} className="flex items-center mb-1">
               <input
-                name="brand"
                 type="checkbox"
+                name="brand"
                 value={b}
                 checked={filters.brand.includes(b)}
                 onChange={handlefilterchange}
@@ -302,7 +285,6 @@ function Filtersidebar() {
             className="w-1/2 p-1 border rounded"
           />
         </div>
-
         <input
           type="range"
           name="maxPrice"
