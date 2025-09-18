@@ -13,28 +13,6 @@ const router = express.Router();
  * @access  Private (admin only)
  * ========================================================================
  */
-router.post("/", protect, authorizeRoles("admin"), async (req, res) => {
-  try {
-    const product = new Product({
-      ...req.body,
-      createdBy: req.user.id,
-    });
-
-    const savedProduct = await product.save();
-    res.status(201).json(savedProduct);
-  } catch (err) {
-    console.error("Create Product Error:", err.message);
-    res.status(500).json({ message: "Server Error" });
-  }
-});
-
-/**
- * ========================================================================
- * @route   GET /api/products
- * @desc    Get all products with optional filters & sorting
- * @access  Public
- * ========================================================================
- */
 router.get("/", async (req, res) => {
   try {
     const {
@@ -55,11 +33,9 @@ router.get("/", async (req, res) => {
       limit,
     } = req.query;
 
-    const filter = {
-      stock: { $gt: 0 }, // ✅ sirf in-stock products
-    };
+    const filter = { stock: { $gt: 0 } }; // ✅ only in-stock products
 
-    // 🔍 Keyword search across name, description, etc.
+    // 🔍 Keyword search
     if (keyword) {
       const regex = new RegExp(keyword, "i");
       filter.$or = [
@@ -71,14 +47,15 @@ router.get("/", async (req, res) => {
       ];
     }
 
-    // 🎯 Category
+    // 🎯 Category (single selection)
     if (category && category.toLowerCase() !== "all") {
       filter.category = { $regex: new RegExp(`^${category}$`, "i") };
     }
 
-    // 🏷️ Brand
+    // 🏷️ Brand (multiple OR)
     if (brand) {
-      filter.brand = { $regex: new RegExp(`^${brand}$`, "i") };
+      const brandArray = brand.split(",").map(b => new RegExp(`^${b.trim()}$`, "i"));
+      filter.brand = { $in: brandArray };
     }
 
     // 🧥 Collection
@@ -86,30 +63,30 @@ router.get("/", async (req, res) => {
       filter.collection = { $regex: new RegExp(`^${collection}$`, "i") };
     }
 
-    // 📏 Sizes
+    // 📏 Sizes (multiple OR)
     if (sizes) {
-      filter.sizes = sizes;
+      const sizesArray = sizes.split(",").map(s => s.trim());
+      filter.sizes = { $in: sizesArray };
     }
 
-    // 🎨 Colors
+    // 🎨 Colors (multiple OR)
     if (color) {
-      filter.colors = { $in: [color.toLowerCase()] };
+      const colorArray = color.split(",").map(c => c.trim().toLowerCase());
+      filter.colors = { $in: colorArray };
     }
 
-    // 🧵 Material
+    // 🧵 Material (multiple OR)
     if (material) {
-      const materialArray = material
-        .split(",")
-        .map((mat) => new RegExp(`^${mat.trim()}$`, "i"));
+      const materialArray = material.split(",").map(m => new RegExp(`^${m.trim()}$`, "i"));
       filter.material = { $in: materialArray };
     }
 
-    // 🚻 Gender
+    // 🚻 Gender (single)
     if (gender) {
       filter.gender = { $regex: new RegExp(`^${gender}$`, "i") };
     }
 
-    // ✅ Boolean values
+    // ✅ Boolean filters
     if (isActive !== undefined) filter.isActive = isActive === "true";
     if (isFeatured !== undefined) filter.isFeatured = isFeatured === "true";
     if (isPublished !== undefined) filter.isPublished = isPublished === "true";
@@ -121,7 +98,7 @@ router.get("/", async (req, res) => {
       if (!isNaN(maxPrice)) filter.price.$lte = Number(maxPrice);
     }
 
-    // 🔃 Sort options
+    // 🔃 Sorting
     let sortOption = {};
     switch (sort) {
       case "price_asc":
@@ -140,12 +117,10 @@ router.get("/", async (req, res) => {
         sortOption.createdAt = -1;
     }
 
-    // 🧮 Fetch products with filters
+    // 🧮 Fetch products
     const productQuery = Product.find(filter).sort(sortOption);
 
-    if (limit && !isNaN(limit)) {
-      productQuery.limit(Number(limit));
-    }
+    if (limit && !isNaN(limit)) productQuery.limit(Number(limit));
 
     const products = await productQuery;
     res.status(200).json({ products });
@@ -154,7 +129,6 @@ router.get("/", async (req, res) => {
     res.status(500).json({ message: err.message || "Server Error" });
   }
 });
-
 
 /**
  * ========================================================================
