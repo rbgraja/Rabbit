@@ -49,10 +49,22 @@ function Handleedit() {
       setProductData({
         ...fallbackProduct,
         ...productDetail,
-        sizes: Array.isArray(productDetail.sizes) ? productDetail.sizes : String(productDetail.sizes || "").split(",").map((v) => v.trim()),
-        colors: Array.isArray(productDetail.colors) ? productDetail.colors : String(productDetail.color || "").split(",").map((v) => v.trim()),
-        gender: ["Men", "Women", "Unisex"].includes(productDetail.gender) ? productDetail.gender : "Unisex",
-        images: Array.isArray(productDetail.images) ? productDetail.images.map((img) => ({ url: img.url, alt: img.alt || "" })) : [],
+        sizes: Array.isArray(productDetail.sizes)
+          ? productDetail.sizes
+          : String(productDetail.sizes || "")
+              .split(",")
+              .map((v) => v.trim()),
+        colors: Array.isArray(productDetail.colors)
+          ? productDetail.colors
+          : String(productDetail.color || "")
+              .split(",")
+              .map((v) => v.trim()),
+        gender: ["Men", "Women", "Unisex"].includes(productDetail.gender)
+          ? productDetail.gender
+          : "Unisex",
+        images: Array.isArray(productDetail.images)
+          ? productDetail.images.map((img) => ({ url: img.url, alt: img.alt || "" }))
+          : [],
       });
     }
   }, [productDetail, id]);
@@ -68,6 +80,7 @@ function Handleedit() {
     }
   };
 
+  // 🔹 Add image via URL
   const handleAddImage = () => {
     if (newImageUrl.trim()) {
       setProductData((prev) => ({
@@ -75,6 +88,18 @@ function Handleedit() {
         images: [...prev.images, { url: newImageUrl, alt: "" }],
       }));
       setNewImageUrl("");
+    }
+  };
+
+  // 🔹 Add image via local file
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const previewUrl = URL.createObjectURL(file);
+      setProductData((prev) => ({
+        ...prev,
+        images: [...prev.images, { url: previewUrl, alt: file.name, file }],
+      }));
     }
   };
 
@@ -116,7 +141,11 @@ function Handleedit() {
     <div className="max-w-5xl mx-auto p-6 shadow-md rounded-md bg-white">
       <h2 className="text-3xl font-bold mb-6">{id ? "Edit Product" : "Add New Product"}</h2>
 
-      {error && <p className="text-red-600 mb-4 font-medium bg-red-100 p-3 rounded">⚠️ {error}</p>}
+      {error && (
+        <p className="text-red-600 mb-4 font-medium bg-red-100 p-3 rounded">
+          ⚠️ {error}
+        </p>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -137,7 +166,11 @@ function Handleedit() {
               <input
                 type={field.type || "text"}
                 name={field.name}
-                value={Array.isArray(productData[field.name]) ? productData[field.name].join(", ") : productData[field.name]}
+                value={
+                  Array.isArray(productData[field.name])
+                    ? productData[field.name].join(", ")
+                    : productData[field.name]
+                }
                 onChange={handleChange}
                 className="border p-2 rounded w-full"
               />
@@ -172,6 +205,7 @@ function Handleedit() {
 
         <div>
           <h4 className="font-medium mb-2">Images</h4>
+          {/* URL Input */}
           <div className="flex gap-2 mb-2">
             <input
               type="text"
@@ -185,16 +219,27 @@ function Handleedit() {
               onClick={handleAddImage}
               className="bg-green-600 text-white px-4 rounded hover:bg-green-700"
             >
-              Add
+              Add URL
             </button>
           </div>
 
+          {/* File Upload */}
+          <div className="mb-2">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleFileUpload}
+              className="border p-2 rounded w-full"
+            />
+          </div>
+
+          {/* Image Preview */}
           <div className="flex gap-3 flex-wrap">
             {productData.images.map((img, index) => (
               <div key={index} className="relative group">
                 <img
                   src={img.url}
-                  alt={`Product ${index}`}
+                  alt={img.alt || `Product ${index}`}
                   className="w-24 h-24 object-cover rounded shadow"
                 />
                 <button
@@ -209,7 +254,10 @@ function Handleedit() {
           </div>
         </div>
 
-        <button type="submit" className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
+        <button
+          type="submit"
+          className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
+        >
           {id ? "Save Changes" : "Add Product"}
         </button>
       </form>
