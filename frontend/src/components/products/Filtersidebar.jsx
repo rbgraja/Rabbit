@@ -32,23 +32,29 @@ function Filtersidebar() {
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || "";
 
-  // 🔹 Backend se filter options fetch
+  // 🔹 Backend se filter options fetch with safety check
   useEffect(() => {
+    let isMounted = true; // ✅ prevent state update if component unmounted
     const fetchOptions = async () => {
       try {
         const { data } = await axios.get(`${API_BASE_URL}/api/products/filters`);
+        if (!isMounted) return;
+
         setFilterOptions({
-          categories: data.categories || [],
-          sizes: data.sizes || [],
-          materials: data.materials || [],
-          brands: data.brands || [],
-          genders: data.genders || [],
+          categories: Array.isArray(data.categories) ? data.categories : [],
+          sizes: Array.isArray(data.sizes) ? data.sizes : [],
+          materials: Array.isArray(data.materials) ? data.materials : [],
+          brands: Array.isArray(data.brands) ? data.brands : [],
+          genders: Array.isArray(data.genders) ? data.genders : [],
         });
       } catch (err) {
         console.error("❌ Error fetching filter options:", err.message);
       }
     };
     fetchOptions();
+    return () => {
+      isMounted = false;
+    };
   }, [API_BASE_URL]);
 
   // 🔹 URL se filters parse karna
@@ -79,7 +85,7 @@ function Filtersidebar() {
         updated[name] = updated[name].filter((v) => v !== value);
       }
     } else if (type === "radio" || type === "button" || type === "number" || type === "range") {
-      updated[name] = value;
+      updated[name] = type === "number" || type === "range" ? Number(value) : value;
     } else {
       updated[name] = value;
     }
@@ -108,6 +114,7 @@ function Filtersidebar() {
     setsearchparams({});
     navigate("?");
     dispatch(setFilters(defaultFilters));
+    // 🔹 Optionally refresh products
     dispatch(fetchProductFilters(defaultFilters));
   };
 

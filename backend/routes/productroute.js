@@ -28,8 +28,6 @@ router.post("/", protect, authorizeRoles("admin"), async (req, res) => {
   }
 });
 
-
-
 /**
  * ========================================================================
  * @route   GET /api/products
@@ -57,7 +55,7 @@ router.get("/", async (req, res) => {
       limit,
     } = req.query;
 
-      const filter = {
+    const filter = {
       stock: { $gt: 0 }, // ✅ sirf in-stock products
     };
 
@@ -73,7 +71,7 @@ router.get("/", async (req, res) => {
       ];
     }
 
-    // 🎯 Category (case-insensitive)
+    // 🎯 Category
     if (category && category.toLowerCase() !== "all") {
       filter.category = { $regex: new RegExp(`^${category}$`, "i") };
     }
@@ -88,9 +86,9 @@ router.get("/", async (req, res) => {
       filter.collection = { $regex: new RegExp(`^${collection}$`, "i") };
     }
 
-    // 📏 Sizes (assumes exact match)
+    // 📏 Sizes
     if (sizes) {
-      filter.sizes = sizes; // or: { $in: Array.isArray(sizes) ? sizes : [sizes] }
+      filter.sizes = sizes;
     }
 
     // 🎨 Colors
@@ -112,24 +110,16 @@ router.get("/", async (req, res) => {
     }
 
     // ✅ Boolean values
-    if (isActive !== undefined) {
-      filter.isActive = isActive === "true";
-    }
-    if (isFeatured !== undefined) {
-      filter.isFeatured = isFeatured === "true";
-    }
-    if (isPublished !== undefined) {
-      filter.isPublished = isPublished === "true";
-    }
+    if (isActive !== undefined) filter.isActive = isActive === "true";
+    if (isFeatured !== undefined) filter.isFeatured = isFeatured === "true";
+    if (isPublished !== undefined) filter.isPublished = isPublished === "true";
 
     // 💰 Price filter
-if (minPrice !== undefined || maxPrice !== undefined) {
-  filter.price = {};
-  if (!isNaN(minPrice)) filter.price.$gte = Number(minPrice);
-  if (!isNaN(maxPrice)) filter.price.$lte = Number(maxPrice);
-}
-
-
+    if (minPrice !== undefined || maxPrice !== undefined) {
+      filter.price = {};
+      if (!isNaN(minPrice)) filter.price.$gte = Number(minPrice);
+      if (!isNaN(maxPrice)) filter.price.$lte = Number(maxPrice);
+    }
 
     // 🔃 Sort options
     let sortOption = {};
@@ -158,54 +148,60 @@ if (minPrice !== undefined || maxPrice !== undefined) {
     }
 
     const products = await productQuery;
-
     res.status(200).json({ products });
-
   } catch (err) {
-    console.error("🔥 Fetch Products Error:", err); // Detailed error
+    console.error("🔥 Fetch Products Error:", err);
     res.status(500).json({ message: err.message || "Server Error" });
   }
 });
 
-
-
 /**
  * ========================================================================
  * @route   GET /api/products/filters
- * @desc    Get available filter options dynamically from DB
+ * @desc    Get available filter options dynamically from DB (with cache)
  * @access  Public
  * ========================================================================
  */
+let filterCache = null;
+let lastFetch = 0;
+
 router.get("/filters", async (req, res) => {
   try {
-    const categories = await Product.distinct("category");
-    const colors = await Product.distinct("colors");  // ✅ tumhare model me array ho sakta hai
-    const sizes = await Product.distinct("sizes");
-    const materials = await Product.distinct("material");
-    const brands = await Product.distinct("brand");
-    const genders = await Product.distinct("gender");
+    // Cache 30 seconds
+    if (filterCache && Date.now() - lastFetch < 30 * 1000) {
+      return res.status(200).json(filterCache);
+    }
 
-    res.status(200).json({
+    const [categories, colors, sizes, materials, brands, genders] = await Promise.all([
+      Product.distinct("category"),
+      Product.distinct("colors"),
+      Product.distinct("sizes"),
+      Product.distinct("material"),
+      Product.distinct("brand"),
+      Product.distinct("gender"),
+    ]);
+
+    filterCache = {
       categories: categories.filter(Boolean),
       colors: colors.filter(Boolean),
       sizes: sizes.filter(Boolean),
       materials: materials.filter(Boolean),
       brands: brands.filter(Boolean),
       genders: genders.filter(Boolean),
-    });
+    };
+    lastFetch = Date.now();
+
+    res.status(200).json(filterCache);
   } catch (err) {
     console.error("❌ Fetch Filter Options Error:", err.message);
     res.status(500).json({ message: "Server Error" });
   }
 });
 
-
-
-
 /**
  * ========================================================================
  * @route   GET /api/products/best-sellers
- * @desc    Get top N best-selling products based on rating & reviews
+ * @desc    Get top N best-selling products
  * @access  Public
  * ========================================================================
  */
@@ -216,13 +212,13 @@ router.get("/best-sellers", async (req, res) => {
     const bestSellers = await Product.find({
       isActive: true,
       isPublished: true,
-       stock: { $gt: 0 }, 
-      rating: { $gt: 0 },       // ✅ Only products with rating > 0
-      numReviews: { $gt: 0 },   // ✅ Only products with at least 1 review
+      stock: { $gt: 0 },
+      rating: { $gt: 0 },
+      numReviews: { $gt: 0 },
     })
       .sort([
-        ["rating", -1],        // 📌 Sort by rating descending
-        ["numReviews", -1],    // 📌 then by number of reviews descending
+        ["rating", -1],
+        ["numReviews", -1],
       ])
       .limit(limit);
 
@@ -233,11 +229,10 @@ router.get("/best-sellers", async (req, res) => {
   }
 });
 
-
 /**
  * ========================================================================
  * @route   GET /api/products/new-arrivals
- * @desc    Get latest created products (New Arrivals)
+ * @desc    Get latest created products
  * @access  Public
  * ========================================================================
  */
@@ -250,7 +245,7 @@ router.get("/new-arrivals", async (req, res) => {
       isPublished: true,
       stock: { $gt: 0 },
     })
-      .sort({ createdAt: -1 }) // 📌 Newest first
+      .sort({ createdAt: -1 })
       .limit(limit);
 
     res.status(200).json(newArrivals);
@@ -259,8 +254,6 @@ router.get("/new-arrivals", async (req, res) => {
     res.status(500).json({ message: "Server Error", error: err.message });
   }
 });
-
-
 
 /**
  * ========================================================================
@@ -306,15 +299,13 @@ router.put("/:id", protect, authorizeRoles("admin"), async (req, res) => {
   }
 });
 
-
 /**
  * ========================================================================
- * @route   get /api/products/similar/:id
- * @desc    Retrieve similar products based on category and gender
+ * @route   GET /api/products/similar/:id
+ * @desc    Retrieve similar products
  * @access  Public
  * ========================================================================
  */
-
 router.get("/similar/:id", async (req, res) => {
   try {
     const currentProduct = await Product.findById(req.params.id);
@@ -324,13 +315,13 @@ router.get("/similar/:id", async (req, res) => {
     }
 
     const similarProducts = await Product.find({
-      _id: { $ne: currentProduct._id }, // Exclude the current product
+      _id: { $ne: currentProduct._id },
       category: currentProduct.category,
       gender: currentProduct.gender,
       isActive: true,
       isPublished: true,
-      stock: { $gt: 0 }, 
-    }).limit(4); // Limit result to top 10 similar items
+      stock: { $gt: 0 },
+    }).limit(4);
 
     res.json(similarProducts);
   } catch (err) {
@@ -339,14 +330,6 @@ router.get("/similar/:id", async (req, res) => {
   }
 });
 
-
-
-
-
-
-
-
-
 /**
  * ========================================================================
  * @route   POST /api/products/:id/reviews
@@ -354,10 +337,6 @@ router.get("/similar/:id", async (req, res) => {
  * @access  Private (logged-in users)
  * ========================================================================
  */
-
-
-
-
 router.post("/:id/reviews", protect, async (req, res) => {
   const { rating, comment } = req.body;
 
