@@ -20,6 +20,11 @@ function Adminhomepage() {
   console.log("📊 Stats:", stats);
   console.log("📦 Recent Orders:", recentOrders);
 
+  // ✅ safeGet helper
+  const safeGet = (obj, path, fallback = "N/A") => {
+    return path.split('.').reduce((acc, key) => acc?.[key], obj) ?? fallback;
+  };
+
   useEffect(() => {
     if (!user || user.role !== 'admin') {
       navigate('/');
@@ -27,9 +32,9 @@ function Adminhomepage() {
   }, [user, navigate]);
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
+    const fetchDashboardData = async (retry = false) => {
       try {
-        const token = localStorage.getItem('userToken');  // <-- updated here
+        const token = localStorage.getItem('userToken');
         if (!token) {
           throw new Error("No token found");
         }
@@ -38,18 +43,29 @@ function Adminhomepage() {
           headers: { Authorization: `Bearer ${token}` },
         };
 
+        console.log("🔄 Fetching Admin Dashboard data...");
+
         const [statsRes, ordersRes] = await Promise.all([
           axios.get('/api/admin/stats', config),
           axios.get('/api/admin/recent-orders?limit=5', config),
         ]);
 
-        setStats({
+        const statsData = {
           totalRevenue: Number(statsRes.data?.totalRevenue) || 0,
           totalOrders: Number(statsRes.data?.totalOrders) || 0,
           totalProducts: Number(statsRes.data?.totalProducts) || 0,
-        });
+        };
 
-        setRecentOrders(Array.isArray(ordersRes.data) ? ordersRes.data : []);
+        const ordersData = Array.isArray(ordersRes.data) ? ordersRes.data : [];
+
+        // ✅ Retry agar empty data aaye
+        if ((!ordersData.length || !statsData.totalOrders) && !retry) {
+          console.warn("⚠️ Empty dashboard data aayi, retrying...");
+          return fetchDashboardData(true);
+        }
+
+        setStats(statsData);
+        setRecentOrders(ordersData);
       } catch (error) {
         console.error("❌ Error fetching admin dashboard data:", error);
         setStats({ totalRevenue: 0, totalOrders: 0, totalProducts: 0 });
@@ -100,7 +116,9 @@ function Adminhomepage() {
                 <thead className='bg-gray-100 text-xs uppercase text-gray-700'>
                   <tr>
                     <th className='py-3 px-4'>Order ID</th>
-                    <th className='py-3 px-4'>User</th>
+                    <th className='py-3 px-4'>Name</th>
+                    <th className='py-3 px-4'>Email</th>
+                    <th className='py-3 px-4'>Phone</th>
                     <th className='py-3 px-4'>Total Price</th>
                     <th className='py-3 px-4'>Status</th>
                   </tr>
@@ -108,16 +126,24 @@ function Adminhomepage() {
                 <tbody>
                   {recentOrders.length > 0 ? (
                     recentOrders.map((order) => (
-                      <tr key={order._id} className='border-b hover:bg-gray-50 cursor-pointer' onClick={() => navigate(`/admin/orders/${order._id}`)} >
+                      <tr
+                        key={order._id}
+                        className='border-b hover:bg-gray-50 cursor-pointer'
+                        onClick={() => navigate(`/admin/orders/${order._id}`)}
+                      >
                         <td className='p-4'>{order._id}</td>
-                        <td className='p-4'>{order.user?.name || "N/A"}</td>
-                        <td className='p-4'>${(Number(order.totalPrice) || 0).toFixed(2)}</td>
+                        <td className='p-4'>{safeGet(order, "user.name")}</td>
+                        <td className='p-4'>{safeGet(order, "user.email")}</td>
+                        <td className='p-4'>{safeGet(order, "shippingAddress.phone")}</td>
+                        <td className='p-4'>
+                          ${(Number(order.totalPrice) || 0).toFixed(2)}
+                        </td>
                         <td className='p-4'>{order.orderStatus || "Processing"}</td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={4} className='p-4 text-center text-gray-500'>
+                      <td colSpan={6} className='p-4 text-center text-gray-500'>
                         No recent orders found.
                       </td>
                     </tr>
