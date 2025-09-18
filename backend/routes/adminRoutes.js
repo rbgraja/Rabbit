@@ -63,12 +63,17 @@ router.delete("/users/:id", protect, authorizeRoles("admin"), async (req, res) =
 /* ------------------------ Orders ------------------------ */
 
 router.get("/orders", protect, authorizeRoles("admin"), async (req, res) => {
-  
   try {
-    const orders = await Order.find().populate("user", "name email").sort({ createdAt: -1 });
-       console.log("📦 Admin Orders from DB:", orders); // Debug
+    // Populate only if user exists to avoid empty array
+    const orders = await Order.find()
+      .populate({ path: "user", select: "name email", match: { role: { $exists: true } } })
+      .sort({ createdAt: -1 });
+
+    console.log("📦 Admin Orders from DB:", orders);
+
     res.status(200).json({ success: true, count: orders.length, orders });
   } catch (err) {
+    console.error("Error fetching orders:", err);
     res.status(500).json({ message: "Error fetching orders" });
   }
 });
@@ -277,8 +282,18 @@ router.get("/stats", protect, authorizeRoles("admin"), async (req, res) => {
     const totalOrders = await Order.countDocuments();
     const totalProducts = await Product.countDocuments();
 
+    // Safely aggregate totalRevenue with type conversion
     const revenueAgg = await Order.aggregate([
-      { $group: { _id: null, total: { $sum: "$totalPrice" } } },
+      {
+        $addFields: {
+          totalPriceNum: {
+            $toDouble: { $ifNull: ["$totalPrice", 0] }, // ensure number type
+          },
+        },
+      },
+      {
+        $group: { _id: null, total: { $sum: "$totalPriceNum" } },
+      },
     ]);
 
     const totalRevenue = revenueAgg[0]?.total || 0;
@@ -291,6 +306,7 @@ router.get("/stats", protect, authorizeRoles("admin"), async (req, res) => {
     res.status(500).json({ message: "Error fetching stats" });
   }
 });
+
 
 /* ------------------------ Recent Orders ------------------------ */
 
