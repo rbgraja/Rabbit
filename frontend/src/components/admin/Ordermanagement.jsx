@@ -11,56 +11,54 @@ function AdminOrders() {
   const [updatingOrderId, setUpdatingOrderId] = useState(null);
   const dispatch = useDispatch();
 
-  // ✅ Redux se user uthao
   const { user } = useSelector((state) => state.auth);
-const fetchOrders = async (retry = false) => {
-  try {
-    setLoading(true);
 
-    const token = localStorage.getItem("userToken");
-    if (!token) {
-      setError("No token found, please login again");
-      return;
+  const fetchOrders = async (retry = false) => {
+    try {
+      setLoading(true);
+
+      const token = localStorage.getItem("userToken");
+      if (!token) {
+        setError("No token found, please login again");
+        return;
+      }
+
+      console.log("🔄 Fetch Orders API call... retry:", retry);
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+      const res = await axios.get(
+        import.meta.env.VITE_BACKGROUND_URL + "/api/admin/orders",
+        config
+      );
+
+      const orders = res.data?.orders || [];
+
+      if (orders.length === 0 && !retry) {
+        console.warn("⚠️ Empty orders array aayi, retry kar rahe hain...");
+        return fetchOrders(true);
+      }
+
+      if (orders.length === 0 && retry) {
+        console.warn("🚫 Still no orders even after retry.");
+      }
+
+      setOrders(orders);
+      setError(null);
+    } catch (err) {
+      console.error("❌ Fetch Orders failed:", err.response?.data || err.message);
+      setError(err.response?.data?.message || err.message);
+      setOrders([]);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    console.log("🔄 Fetch Orders API call... retry:", retry);
-    const config = { headers: { Authorization: `Bearer ${token}` } };
-    const res = await axios.get(
-      import.meta.env.VITE_BACKGROUND_URL + "/api/admin/orders", // ✅ full URL (safe for Vercel)
-      config
-    );
-
-    const orders = res.data?.orders || [];
-
-    if (orders.length === 0 && !retry) {
-      console.warn("⚠️ Empty orders array aayi, retry kar rahe hain...");
-      return fetchOrders(true);
+  useEffect(() => {
+    if (user?.role === "admin") {
+      fetchOrders();
+    } else {
+      console.log("⏭️ User not admin, skipping fetchOrders");
     }
-
-    if (orders.length === 0 && retry) {
-      console.warn("🚫 Still no orders even after retry.");
-    }
-
-    setOrders(orders);
-    setError(null);
-  } catch (err) {
-    console.error("❌ Fetch Orders failed:", err.response?.data || err.message);
-    setError(err.response?.data?.message || err.message);
-    setOrders([]);
-  } finally {
-    setLoading(false);
-  }
-};
-
-// ✅ User check ke sath API chalana
-useEffect(() => {
-  if (user?.role === "admin") {
-    fetchOrders();
-  } else {
-    console.log("⏭️ User not admin, skipping fetchOrders");
-  }
-}, [user]);
-
+  }, [user]);
 
   const updateOrderStatus = async (orderId, newStatus) => {
     setUpdatingOrderId(orderId);
@@ -70,7 +68,11 @@ useEffect(() => {
 
       const config = { headers: { Authorization: `Bearer ${token}` } };
 
-      await axios.put(`/api/admin/orders/${orderId}`, { status: newStatus }, config);
+      await axios.put(
+        import.meta.env.VITE_BACKGROUND_URL + `/api/admin/orders/${orderId}`,
+        { status: newStatus },
+        config
+      );
 
       setOrders((prev) =>
         prev.map((order) =>
@@ -98,7 +100,7 @@ useEffect(() => {
       const config = { headers: { Authorization: `Bearer ${token}` } };
 
       await axios.put(
-        `/api/admin/orders/${orderId}/payment`,
+        import.meta.env.VITE_BACKGROUND_URL + `/api/admin/orders/${orderId}/payment`,
         { isPaid: newIsPaid },
         config
       );
