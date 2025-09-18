@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { deleteOrderById } from "../../redux/slices/adminOrderSlice";
-import { Link } from "react-router-dom"; // <-- Added import
+import { Link } from "react-router-dom";
 
 function AdminOrders() {
   const [orders, setOrders] = useState([]);
@@ -11,36 +11,42 @@ function AdminOrders() {
   const [updatingOrderId, setUpdatingOrderId] = useState(null);
   const dispatch = useDispatch();
 
-const fetchOrders = async (retry = false) => {
-  setLoading(true);
-  try {
-    const token = localStorage.getItem("userToken");
-    if (!token) throw new Error("No token found");
-    console.log("🔄 Fetch Orders API call ho rahi hai...");
-    const config = { headers: { Authorization: `Bearer ${token}` } };
-    const res = await axios.get("/api/admin/orders", config);
+  // ✅ Redux se user uthao
+  const { user } = useSelector((state) => state.auth);
 
-    setOrders(res.data?.orders || []);
-    setError(null);
-  } catch (err) {
-    console.error("❌ Fetch Orders failed:", err.message);
+  const fetchOrders = async (retry = false) => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("userToken");
+      if (!token) throw new Error("No token found");
 
-    if (!retry) {
-      console.log("🔁 Retrying fetchOrders...");
-      fetchOrders(true); // ek dafa aur retry
-    } else {
-      setError(err.response?.data?.message || err.message);
-      setOrders([]);
+      console.log("🔄 Fetch Orders API call ho rahi hai...");
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+      const res = await axios.get("/api/admin/orders", config);
+
+      setOrders(res.data?.orders || []);
+      setError(null);
+    } catch (err) {
+      console.error("❌ Fetch Orders failed:", err.message);
+
+      if (!retry) {
+        console.log("🔁 Retrying fetchOrders...");
+        fetchOrders(true); // ek dafa aur retry
+      } else {
+        setError(err.response?.data?.message || err.message);
+        setOrders([]);
+      }
+    } finally {
+      setLoading(false);
     }
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
-
+  // ✅ API tabhi chale jab user loaded ho aur admin role ho
   useEffect(() => {
-    fetchOrders();
-  }, []);
+    if (user && user.role === "admin") {
+      fetchOrders();
+    }
+  }, [user]);
 
   const updateOrderStatus = async (orderId, newStatus) => {
     setUpdatingOrderId(orderId);
@@ -132,7 +138,7 @@ const fetchOrders = async (retry = false) => {
               </tr>
             </thead>
             <tbody>
-              {orders?.length === 0 ? ( // ✅ safe check
+              {orders?.length === 0 ? (
                 <tr>
                   <td colSpan="7" className="text-center py-5 text-gray-500 italic">
                     🚫 No orders found
@@ -141,7 +147,6 @@ const fetchOrders = async (retry = false) => {
               ) : (
                 orders.map((order) => (
                   <tr key={order._id} className="hover:bg-gray-50">
-                    {/* ✅ Order ID as link */}
                     <td className="py-3 px-4 font-medium text-blue-600">
                       <Link to={`/admin/orders/${order._id}`} className="hover:underline">
                         {order._id}
