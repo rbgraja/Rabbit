@@ -11,24 +11,32 @@ function AdminOrders() {
   const [updatingOrderId, setUpdatingOrderId] = useState(null);
   const dispatch = useDispatch();
 
-  const fetchOrders = async () => {
-    setLoading(true);
-    try {
-      const token = localStorage.getItem("userToken");
-      if (!token) throw new Error("No token found");
+const fetchOrders = async (retry = false) => {
+  setLoading(true);
+  try {
+    const token = localStorage.getItem("userToken");
+    if (!token) throw new Error("No token found");
+    console.log("🔄 Fetch Orders API call ho rahi hai...");
+    const config = { headers: { Authorization: `Bearer ${token}` } };
+    const res = await axios.get("/api/admin/orders", config);
 
-      const config = { headers: { Authorization: `Bearer ${token}` } };
-      const res = await axios.get("/api/admin/orders", config);
+    setOrders(res.data?.orders || []);
+    setError(null);
+  } catch (err) {
+    console.error("❌ Fetch Orders failed:", err.message);
 
-      setOrders(res.data?.orders || []); // ✅ safe fallback
-      setError(null);
-    } catch (err) {
+    if (!retry) {
+      console.log("🔁 Retrying fetchOrders...");
+      fetchOrders(true); // ek dafa aur retry
+    } else {
       setError(err.response?.data?.message || err.message);
       setOrders([]);
-    } finally {
-      setLoading(false);
     }
-  };
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   useEffect(() => {
     fetchOrders();
