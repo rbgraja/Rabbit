@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useDispatch } from "react-redux";
 import { deleteOrderById } from "../../redux/slices/adminOrderSlice";
+import { Link } from "react-router-dom"; // <-- Added import
 
 function AdminOrders() {
   const [orders, setOrders] = useState([]);
@@ -132,7 +133,12 @@ function AdminOrders() {
               ) : (
                 orders.map((order) => (
                   <tr key={order._id} className="hover:bg-gray-50">
-                    <td className="py-3 px-4 font-medium">{order._id}</td>
+                    {/* ✅ Order ID as link */}
+                    <td className="py-3 px-4 font-medium text-blue-600">
+                      <Link to={`/admin/orders/${order._id}`} className="hover:underline">
+                        {order._id}
+                      </Link>
+                    </td>
                     <td className="py-3 px-4">{order.user?.name || "Unknown"}</td>
                     <td className="py-3 px-4">Rs {order.totalPrice}</td>
                     <td className="py-3 px-4">
