@@ -280,8 +280,8 @@ router.delete("/subscribers/:id", protect, authorizeRoles("admin"), async (req, 
   }
 });
 
-/* ------------------------ Stats ------------------------ */
 
+/* ------------------------ Stats ------------------------ */
 router.get("/stats", protect, authorizeRoles("admin"), async (req, res) => {
   try {
     const totalOrders = await Order.countDocuments();
@@ -298,31 +298,44 @@ router.get("/stats", protect, authorizeRoles("admin"), async (req, res) => {
 
     const totalRevenue = revenueAgg[0]?.total || 0;
 
-    res.status(200).json({ totalRevenue, totalOrders, totalProducts });
+    res.status(200).json({
+      success: true,
+      stats: { totalRevenue, totalOrders, totalProducts },
+    });
   } catch (err) {
-    console.error("Error fetching stats:", err);
-    res.status(500).json({ message: "Error fetching stats" });
+    console.error("❌ Error fetching stats:", err);
+    res.status(500).json({ success: false, message: "Error fetching stats" });
   }
 });
-
 
 /* ------------------------ Recent Orders ------------------------ */
+router.get(
+  "/recent-orders",
+  protect,
+  authorizeRoles("admin"),
+  async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit) || 5;
+      const recentOrders = await Order.find()
+        .populate("user", "name email")
+        .sort({ createdAt: -1 })
+        .limit(limit);
 
-router.get("/recent-orders", protect, authorizeRoles("admin"), async (req, res) => {
-  try {
-    const limit = parseInt(req.query.limit) || 5;
-    const recentOrders = await Order.find()
-      .populate("user", "name email")
-      .sort({ createdAt: -1 })
-      .limit(limit);
+      console.log("📦 Recent orders fetched:", recentOrders.length);
 
-    console.log("Recent orders fetched from DB:", recentOrders);
-
-    res.status(200).json(recentOrders);
-  } catch (err) {
-    console.error("Error fetching recent orders:", err);
-    res.status(500).json({ message: "Error fetching recent orders" });
+      res.status(200).json({
+        success: true,
+        count: recentOrders.length,
+        orders: recentOrders,
+      });
+    } catch (err) {
+      console.error("❌ Error fetching recent orders:", err);
+      res
+        .status(500)
+        .json({ success: false, message: "Error fetching recent orders" });
+    }
   }
-});
+);
+
 
 module.exports = router;
