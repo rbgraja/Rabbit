@@ -8,28 +8,19 @@ function OrderDetailPage() {
   const dispatch = useDispatch();
   const location = useLocation();
 
-  // Redux se user aur token dono le rahe hain
   const { user, token } = useSelector((state) => state.auth);
   const { orderDetail, loading, error } = useSelector((state) => state.orders);
 
-  // Normalize backend order object
   const order =
     orderDetail?.order ||
     (orderDetail?.success ? orderDetail : null) ||
     orderDetail;
 
   useEffect(() => {
-    console.log("✅ OrderDetailPage mounted with id:", id);
-    console.log("User token from Redux:", token);
-    console.log("Local token from storage:", localStorage.getItem("userToken"));
-
     const localToken = localStorage.getItem("userToken");
     const finalToken = token || localToken;
 
-    if (!finalToken) {
-      console.warn("❌ No token found — cannot fetch order details");
-      return;
-    }
+    if (!finalToken) return;
 
     dispatch(
       fetchOrderDetailById({
@@ -39,7 +30,6 @@ function OrderDetailPage() {
     );
   }, [dispatch, id, token]);
 
-  // Agar dono jagah token na ho to user ko message dikhao
   if (!localStorage.getItem("userToken") && !token) {
     return (
       <p className="p-6 text-center text-red-500 font-medium">
@@ -48,19 +38,10 @@ function OrderDetailPage() {
     );
   }
 
-  if (loading) {
-    return <p className="p-6 text-center">Loading order details...</p>;
-  }
+  if (loading) return <p className="p-6 text-center">Loading order details...</p>;
+  if (error) return <p className="p-6 text-center text-red-500 font-medium">{error}</p>;
+  if (!order?._id) return <p className="p-6 text-center text-gray-500">Order not found.</p>;
 
-  if (error) {
-    return <p className="p-6 text-center text-red-500 font-medium">{error}</p>;
-  }
-
-  if (!order?._id) {
-    return <p className="p-6 text-center text-gray-500">Order not found.</p>;
-  }
-
-  // Check if current path starts with /admin/orders (admin came here)
   const isAdminRoute = location.pathname.startsWith("/admin/orders");
 
   return (
@@ -101,19 +82,29 @@ function OrderDetailPage() {
           </div>
         </div>
 
-        {/* Payment & Shipping */}
+        {/* ✅ Customer Info Section */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 mb-8">
+          <div>
+            <h4 className="text-lg font-semibold mb-2">Customer Info</h4>
+            <p>Name: {order.user?.name || "N/A"}</p>
+            <p>Email: {order.user?.email || "N/A"}</p>
+            <p>Phone: {order.shippingAddress?.phone || "N/A"}</p>
+          </div>
+
           <div>
             <h4 className="text-lg font-semibold mb-2">Payment Info</h4>
             <p>Method: {order.paymentMethod || order.paymentmethod}</p>
             <p>Status: {order.isPaid ? "Paid" : "Unpaid"}</p>
           </div>
+
           <div>
             <h4 className="text-lg font-semibold mb-2">Shipping Info</h4>
             <p>
-              Address: {order.shippingAddress?.city},{" "}
+              Address: {order.shippingAddress?.address},{" "}
+              {order.shippingAddress?.city},{" "}
               {order.shippingAddress?.country}
             </p>
+            <p>Postal Code: {order.shippingAddress?.postalCode || "N/A"}</p>
           </div>
         </div>
 
@@ -152,7 +143,9 @@ function OrderDetailPage() {
                   <td colSpan="3" className="px-4 py-3 text-right font-semibold">
                     Subtotal:
                   </td>
-                  <td className="px-4 py-3 font-bold">${order.totalPrice?.toFixed(2)}</td>
+                  <td className="px-4 py-3 font-bold">
+                    ${order.totalPrice?.toFixed(2)}
+                  </td>
                 </tr>
               </tbody>
             </table>
