@@ -14,32 +14,32 @@ function AdminOrders() {
   // ✅ Redux se user uthao
   const { user } = useSelector((state) => state.auth);
 
-  const fetchOrders = async (retry = false) => {
-    setLoading(true);
-    try {
-      const token = localStorage.getItem("userToken");
-      if (!token) throw new Error("No token found");
+const fetchOrders = async (retry = false) => {
+  setLoading(true);
+  try {
+    const token = localStorage.getItem("userToken");
+    if (!token) throw new Error("No token found");
 
-      console.log("🔄 Fetch Orders API call ho rahi hai 2nd try");
-      const config = { headers: { Authorization: `Bearer ${token}` } };
-      const res = await axios.get("/api/admin/orders", config);
+    console.log("🔄 Fetch Orders API call ho 3rd...");
+    const config = { headers: { Authorization: `Bearer ${token}` } };
+    const res = await axios.get("/api/admin/orders", config);
 
-      setOrders(res.data?.orders || []);
-      setError(null);
-    } catch (err) {
-      console.error("❌ Fetch Orders failed:", err.message);
-
-      if (!retry) {
-        console.log("🔁 Retrying fetchOrders...");
-        fetchOrders(true); // ek dafa aur retry
-      } else {
-        setError(err.response?.data?.message || err.message);
-        setOrders([]);
-      }
-    } finally {
-      setLoading(false);
+    if (res.data?.orders?.length === 0 && !retry) {
+      console.log("⚠️ Empty orders array aayi, retry kar rahe hain...");
+      return fetchOrders(true); // ✅ dobara call
     }
-  };
+
+    setOrders(res.data?.orders || []);
+    setError(null);
+  } catch (err) {
+    console.error("❌ Fetch Orders failed:", err.message);
+    setError(err.response?.data?.message || err.message);
+    setOrders([]);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   // ✅ API tabhi chale jab user loaded ho aur admin role ho
   useEffect(() => {
