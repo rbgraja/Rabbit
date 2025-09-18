@@ -64,19 +64,22 @@ router.delete("/users/:id", protect, authorizeRoles("admin"), async (req, res) =
 
 router.get("/orders", protect, authorizeRoles("admin"), async (req, res) => {
   try {
-    // Populate only if user exists to avoid empty array
-    const orders = await Order.find()
-      .populate({ path: "user", select: "name email", match: { role: { $exists: true } } })
-      .sort({ createdAt: -1 });
+    const orders = await Order.find().sort({ createdAt: -1 }).lean();
 
-    console.log("📦 Admin Orders from DB:", orders);
+    const ordersWithUser = await Promise.all(
+      orders.map(async (order) => {
+        const user = await User.findById(order.user).select("name email").lean();
+        return { ...order, user: user || null };
+      })
+    );
 
-    res.status(200).json({ success: true, count: orders.length, orders });
+    res.status(200).json({ success: true, count: ordersWithUser.length, orders: ordersWithUser });
   } catch (err) {
     console.error("Error fetching orders:", err);
     res.status(500).json({ message: "Error fetching orders" });
   }
 });
+
 
 router.put("/orders/:id", protect, authorizeRoles("admin"), async (req, res) => {
   try {
@@ -282,23 +285,16 @@ router.get("/stats", protect, authorizeRoles("admin"), async (req, res) => {
     const totalOrders = await Order.countDocuments();
     const totalProducts = await Product.countDocuments();
 
-    // Safely aggregate totalRevenue with type conversion
     const revenueAgg = await Order.aggregate([
       {
         $addFields: {
-          totalPriceNum: {
-            $toDouble: { $ifNull: ["$totalPrice", 0] }, // ensure number type
-          },
+          totalPriceNum: { $toDouble: { $ifNull: ["$totalPrice", 0] } },
         },
       },
-      {
-        $group: { _id: null, total: { $sum: "$totalPriceNum" } },
-      },
+      { $group: { _id: null, total: { $sum: "$totalPriceNum" } } },
     ]);
 
     const totalRevenue = revenueAgg[0]?.total || 0;
-
-    console.log("Stats fetched from DB:", { totalOrders, totalProducts, totalRevenue });
 
     res.status(200).json({ totalRevenue, totalOrders, totalProducts });
   } catch (err) {
