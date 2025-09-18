@@ -20,7 +20,7 @@ function AdminOrders() {
       const token = localStorage.getItem("userToken");
       if (!token) throw new Error("No token found");
 
-      console.log("🔄 Fetch Orders API call ho rahi hai...");
+      console.log("🔄 Fetch Orders API call ho rahi hai 2nd try");
       const config = { headers: { Authorization: `Bearer ${token}` } };
       const res = await axios.get("/api/admin/orders", config);
 
