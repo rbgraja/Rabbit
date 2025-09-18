@@ -13,26 +13,38 @@ function AdminOrders() {
 
   // ✅ Redux se user uthao
   const { user } = useSelector((state) => state.auth);
-
 const fetchOrders = async (retry = false) => {
-  setLoading(true);
   try {
+    setLoading(true);
+
     const token = localStorage.getItem("userToken");
-    if (!token) throw new Error("No token found");
-
-    console.log("🔄 Fetch Orders API call ho 4rd...");
-    const config = { headers: { Authorization: `Bearer ${token}` } };
-    const res = await axios.get("/api/admin/orders", config);
-
-    if (res.data?.orders?.length === 0 && !retry) {
-      console.log("⚠️ Empty orders array aayi, retry kar rahe hain...");
-      return fetchOrders(true); // ✅ dobara call
+    if (!token) {
+      setError("No token found, please login again");
+      return;
     }
 
-    setOrders(res.data?.orders || []);
+    console.log("🔄 Fetch Orders API call... retry:", retry);
+    const config = { headers: { Authorization: `Bearer ${token}` } };
+    const res = await axios.get(
+      import.meta.env.VITE_BACKGROUND_URL + "/api/admin/orders", // ✅ full URL (safe for Vercel)
+      config
+    );
+
+    const orders = res.data?.orders || [];
+
+    if (orders.length === 0 && !retry) {
+      console.warn("⚠️ Empty orders array aayi, retry kar rahe hain...");
+      return fetchOrders(true);
+    }
+
+    if (orders.length === 0 && retry) {
+      console.warn("🚫 Still no orders even after retry.");
+    }
+
+    setOrders(orders);
     setError(null);
   } catch (err) {
-    console.error("❌ Fetch Orders failed:", err.message);
+    console.error("❌ Fetch Orders failed:", err.response?.data || err.message);
     setError(err.response?.data?.message || err.message);
     setOrders([]);
   } finally {
@@ -40,13 +52,15 @@ const fetchOrders = async (retry = false) => {
   }
 };
 
+// ✅ User check ke sath API chalana
+useEffect(() => {
+  if (user?.role === "admin") {
+    fetchOrders();
+  } else {
+    console.log("⏭️ User not admin, skipping fetchOrders");
+  }
+}, [user]);
 
-  // ✅ API tabhi chale jab user loaded ho aur admin role ho
-  useEffect(() => {
-    if (user && user.role === "admin") {
-      fetchOrders();
-    }
-  }, [user]);
 
   const updateOrderStatus = async (orderId, newStatus) => {
     setUpdatingOrderId(orderId);
