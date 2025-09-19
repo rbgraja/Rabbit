@@ -3,6 +3,8 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import axios from "axios";
 import { setFilters } from "../../redux/slices/productSlice";
+import Skeleton from "react-loading-skeleton";
+import "react-loading-skeleton/dist/skeleton.css";
 
 function Filtersidebar() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -34,52 +36,51 @@ function Filtersidebar() {
 
   const API_BASE_URL = import.meta.env.VITE_BACKGROUND_URL || "";
 
- useEffect(() => {
-  let isMounted = true;
+  useEffect(() => {
+    let isMounted = true;
 
-  const fetchFilters = async () => {
-    try {
-      const { data } = await axios.get(`${API_BASE_URL}/api/products/filters`);
-      if (!isMounted) return;
+    const fetchFilters = async () => {
+      try {
+        const { data } = await axios.get(`${API_BASE_URL}/api/products/filters`);
+        if (!isMounted) return;
 
-      // Agar koi array empty ya undefined ho to fallback
-      const categories = data.categories?.length ? data.categories : ["Shirts","Pants","Shoes"];
-      const sizes = data.sizes?.length ? data.sizes : ["S","M","L","XL"];
-      const materials = data.materials?.length ? data.materials : ["Cotton","Leather"];
-      const brands = data.brands?.length ? data.brands : ["BrandA","BrandB"];
-      const genders = data.genders?.length ? data.genders : ["Male","Female"];
+        const categories = data.categories?.length ? data.categories : ["Shirts", "Pants", "Shoes"];
+        const sizes = data.sizes?.length ? data.sizes : ["S", "M", "L", "XL"];
+        const materials = data.materials?.length ? data.materials : ["Cotton", "Leather"];
+        const brands = data.brands?.length ? data.brands : ["BrandA", "BrandB"];
+        const genders = data.genders?.length ? data.genders : ["Male", "Female"];
 
-      setFilterOptions({ categories, sizes, materials, brands, genders });
-      setLoadingFilters(false);
-    } catch (err) {
-      console.warn("Failed to fetch filters, using fallback.", err.message);
-      if (isMounted) {
-        setFilterOptions({
-          categories: ["Shirts","Pants","Shoes"],
-          sizes: ["S","M","L","XL"],
-          materials: ["Cotton","Leather"],
-          brands: ["BrandA","BrandB"],
-          genders: ["Male","Female"],
-        });
+        setFilterOptions({ categories, sizes, materials, brands, genders });
         setLoadingFilters(false);
+      } catch (err) {
+        console.warn("Failed to fetch filters, using fallback.", err.message);
+        if (isMounted) {
+          setFilterOptions({
+            categories: ["Shirts", "Pants", "Shoes"],
+            sizes: ["S", "M", "L", "XL"],
+            materials: ["Cotton", "Leather"],
+            brands: ["BrandA", "BrandB"],
+            genders: ["Male", "Female"],
+          });
+          setLoadingFilters(false);
+        }
       }
+    };
+
+    if (
+      !filterOptions.categories.length &&
+      !filterOptions.sizes.length &&
+      !filterOptions.materials.length &&
+      !filterOptions.brands.length &&
+      !filterOptions.genders.length
+    ) {
+      fetchFilters();
     }
-  };
 
-  // Agar pehle empty array mili ya undefined, dobara fetch
-  if (
-    !filterOptions.categories.length &&
-    !filterOptions.sizes.length &&
-    !filterOptions.materials.length &&
-    !filterOptions.brands.length &&
-    !filterOptions.genders.length
-  ) {
-    fetchFilters();
-  }
-
-  return () => { isMounted = false };
-}, [API_BASE_URL, filterOptions]);
-
+    return () => {
+      isMounted = false;
+    };
+  }, [API_BASE_URL, filterOptions]);
 
   // 🔹 Parse URL params
   useEffect(() => {
@@ -136,13 +137,30 @@ function Filtersidebar() {
     dispatch(setFilters(defaultFilters));
   };
 
-  if (loadingFilters) return <p className="p-4 text-gray-500">Loading filters...</p>;
+  // 🔹 Show Skeleton when loading
+  if (loadingFilters) {
+    return (
+      <div className="p-4 space-y-6">
+        <Skeleton height={30} width={120} />
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="space-y-2">
+            <Skeleton height={20} width={100} />
+            <Skeleton count={3} height={15} width={80} />
+          </div>
+        ))}
+        <Skeleton height={40} width={150} />
+      </div>
+    );
+  }
 
   return (
     <div className="p-4">
       <h3 className="text-xl font-medium text-gray-800 mb-4">Filter</h3>
       <div className="mb-6">
-        <button onClick={resetFilters} className="text-sm text-red-600 hover:text-red-800 border border-red-500 px-4 py-2 rounded-md">
+        <button
+          onClick={resetFilters}
+          className="text-sm text-red-600 hover:text-red-800 border border-red-500 px-4 py-2 rounded-md"
+        >
           Reset Filters
         </button>
       </div>

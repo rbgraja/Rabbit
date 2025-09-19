@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import { Link } from "react-router-dom";
 import axios from "axios";
+import Skeleton from "react-loading-skeleton";
+import "react-loading-skeleton/dist/skeleton.css";
 
 const BASE_URL = import.meta.env.VITE_BACKGROUND_URL;
 
@@ -24,7 +26,6 @@ function NewArrival() {
           `${BASE_URL}/api/products/new-arrivals?limit=12`
         );
         setProducts(Array.isArray(res.data) ? res.data : []);
-
       } catch (err) {
         console.error("New Arrival fetch failed:", err);
         setProducts([]);
@@ -118,7 +119,16 @@ function NewArrival() {
         onMouseLeave={handleMouseUpOrLeave}
       >
         {loading ? (
-          <p className="text-center text-gray-500">Loading new arrivals...</p>
+          // 🔹 Skeleton Loader
+          Array(4).fill().map((_, i) => (
+            <div key={i} className="min-w-[100%] sm:min-w-[50%] lg:min-w-[30%] relative">
+              <Skeleton height={500} className="rounded-lg" />
+              <div className="absolute bottom-0 left-0 right-0 p-4">
+                <Skeleton height={20} width={`60%`} />
+                <Skeleton height={20} width={`40%`} />
+              </div>
+            </div>
+          ))
         ) : products.length === 0 ? (
           <p className="text-center text-gray-500">No new products found.</p>
         ) : (

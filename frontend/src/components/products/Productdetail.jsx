@@ -1,13 +1,15 @@
-import React, { useEffect, useState } from 'react';
-import { toast } from 'sonner';
-import Productsgrid from './Productsgrid';
-import { useParams } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
+import React, { useEffect, useState } from "react";
+import { toast } from "sonner";
+import Productsgrid from "./Productsgrid";
+import { useParams } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
 import {
   fetchProductDetail,
   similarProducts,
-} from '../../redux/slices/productSlice';
-import { addToCartAsync } from '../../redux/slices/cartSlice';
+} from "../../redux/slices/productSlice";
+import { addToCartAsync } from "../../redux/slices/cartSlice";
+import Skeleton from "react-loading-skeleton";
+import "react-loading-skeleton/dist/skeleton.css";
 
 function Productdetail({ productId: propProductId }) {
   const { id: paramId } = useParams();
@@ -23,9 +25,9 @@ function Productdetail({ productId: propProductId }) {
 
   const { user, guestId } = useSelector((state) => state.auth);
 
-  const [mainImage, setMainImage] = useState('');
-  const [selectedSize, setSelectedSize] = useState('');
-  const [selectedColor, setSelectedColor] = useState('');
+  const [mainImage, setMainImage] = useState("");
+  const [selectedSize, setSelectedSize] = useState("");
+  const [selectedColor, setSelectedColor] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [isButtonDisabled, setIsButtonDisabled] = useState(false);
 
@@ -51,8 +53,6 @@ function Productdetail({ productId: propProductId }) {
   useEffect(() => {
     if (!selectedProduct) return;
 
-    console.log("📦 Product detail fetched:", selectedProduct);
-
     if (selectedProduct.images?.length > 0) {
       setMainImage(selectedProduct.images[0].url);
     }
@@ -68,7 +68,7 @@ function Productdetail({ productId: propProductId }) {
 
   const handleQuantityChange = (type) => {
     setQuantity((prev) => {
-      if (type === 'plus') {
+      if (type === "plus") {
         if (prev < selectedProduct?.stock) {
           return prev + 1;
         } else {
@@ -83,7 +83,7 @@ function Productdetail({ productId: propProductId }) {
 
   const handleAddToCart = () => {
     if (!selectedColor || !selectedSize) {
-      toast.error('Please select a size and color');
+      toast.error("Please select a size and color");
       return;
     }
 
@@ -105,13 +105,32 @@ function Productdetail({ productId: propProductId }) {
 
     dispatch(addToCartAsync(cartItem))
       .unwrap()
-      .then(() => toast.success('Product added to cart!'))
-      .catch(() => toast.error('Failed to add product to cart'))
+      .then(() => toast.success("Product added to cart!"))
+      .catch(() => toast.error("Failed to add product to cart"))
       .finally(() => setIsButtonDisabled(false));
   };
 
-  if (loading) return <p className="text-center text-gray-500">Loading product...</p>;
-  if (error) return <p className="text-center text-red-500">Error: {error}</p>;
+  if (loading) {
+    return (
+      <div className="p-6 bg-gray-50 min-h-screen">
+        <div className="max-w-6xl mx-auto bg-white p-8 rounded-xl shadow-md">
+          <div className="flex flex-col md:flex-row gap-10">
+            <Skeleton width={80} height={80} count={4} />
+            <Skeleton height={500} width="100%" className="rounded-lg" />
+            <div className="md:w-1/2 space-y-5">
+              <Skeleton height={40} width={250} />
+              <Skeleton height={30} width={100} />
+              <Skeleton count={3} />
+              <Skeleton width={150} height={40} />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error)
+    return <p className="text-center text-red-500">Error: {error}</p>;
   if (!selectedProduct) return null;
 
   return (
@@ -123,13 +142,13 @@ function Productdetail({ productId: propProductId }) {
             {selectedProduct.images?.map((img, idx) => (
               <img
                 key={idx}
-                src={img?.url || '/fallback.jpg'}
+                src={img?.url || "/fallback.jpg"}
                 alt={`thumb-${idx}`}
                 onClick={() => setMainImage(img?.url)}
                 className={`w-20 h-20 object-cover rounded-md cursor-pointer border transition ${
                   mainImage === img?.url
-                    ? 'border-black scale-105'
-                    : 'border-gray-300 hover:border-black'
+                    ? "border-black scale-105"
+                    : "border-gray-300 hover:border-black"
                 }`}
               />
             ))}
@@ -138,7 +157,7 @@ function Productdetail({ productId: propProductId }) {
           {/* Main Image */}
           <div className="md:w-1/2">
             <img
-              src={mainImage || '/fallback.jpg'}
+              src={mainImage || "/fallback.jpg"}
               alt="main"
               className="w-full h-[500px] object-cover rounded-lg shadow"
             />
@@ -146,8 +165,12 @@ function Productdetail({ productId: propProductId }) {
 
           {/* Info */}
           <div className="md:w-1/2 space-y-5">
-            <h1 className="text-3xl font-bold text-gray-900">{selectedProduct.name}</h1>
-            <p className="text-2xl text-green-600 font-semibold">${selectedProduct.price}</p>
+            <h1 className="text-3xl font-bold text-gray-900">
+              {selectedProduct.name}
+            </h1>
+            <p className="text-2xl text-green-600 font-semibold">
+              ${selectedProduct.price}
+            </p>
             <p className="text-gray-600">{selectedProduct.description}</p>
 
             <p className="text-sm text-gray-500">
@@ -165,8 +188,8 @@ function Productdetail({ productId: propProductId }) {
                       onClick={() => setSelectedColor(color)}
                       className={`w-10 h-10 rounded-full border-2 ${
                         selectedColor === color
-                          ? 'border-black scale-110'
-                          : 'border-gray-300 hover:border-black'
+                          ? "border-black scale-110"
+                          : "border-gray-300 hover:border-black"
                       }`}
                       style={{
                         backgroundColor: formatColor(color),
@@ -189,8 +212,8 @@ function Productdetail({ productId: propProductId }) {
                       onClick={() => setSelectedSize(size)}
                       className={`min-w-[3rem] text-center py-2 px-4 rounded-md text-sm font-medium transition duration-200 border shadow-sm ${
                         selectedSize === size
-                          ? 'bg-black text-white border-black scale-105'
-                          : 'border-gray-300 text-gray-700 hover:border-black hover:text-black'
+                          ? "bg-black text-white border-black scale-105"
+                          : "border-gray-300 text-gray-700 hover:border-black hover:text-black"
                       }`}
                     >
                       {size}
@@ -205,14 +228,14 @@ function Productdetail({ productId: propProductId }) {
               <p className="text-sm font-medium text-gray-700 mb-1">Quantity:</p>
               <div className="flex items-center space-x-4">
                 <button
-                  onClick={() => handleQuantityChange('minus')}
+                  onClick={() => handleQuantityChange("minus")}
                   className="bg-gray-200 hover:bg-gray-300 text-xl px-3 rounded-full"
                 >
                   -
                 </button>
                 <span className="font-medium text-lg">{quantity}</span>
                 <button
-                  onClick={() => handleQuantityChange('plus')}
+                  onClick={() => handleQuantityChange("plus")}
                   className="bg-gray-200 hover:bg-gray-300 text-xl px-3 rounded-full"
                 >
                   +
@@ -226,19 +249,21 @@ function Productdetail({ productId: propProductId }) {
               disabled={isButtonDisabled}
               className={`w-full py-3 text-white text-lg rounded-md font-semibold transition ${
                 isButtonDisabled
-                  ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-black hover:bg-gray-800'
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-black hover:bg-gray-800"
               }`}
             >
-              {isButtonDisabled ? 'Adding...' : 'Add to Cart'}
+              {isButtonDisabled ? "Adding..." : "Add to Cart"}
             </button>
           </div>
         </div>
 
         {/* Similar Products */}
         <div className="mt-20">
-          <h2 className="text-2xl font-bold text-center mb-6 text-gray-800">You may also like</h2>
-          <Productsgrid products={similar} />
+          <h2 className="text-2xl font-bold text-center mb-6 text-gray-800">
+            You may also like
+          </h2>
+          <Productsgrid products={similar} loading={loading} />
         </div>
       </div>
     </div>
@@ -247,24 +272,20 @@ function Productdetail({ productId: propProductId }) {
 
 /* ------------------ Custom Color Mapping ------------------ */
 const customColors = {
-  "floralprint": "#ffb6c1",      // example light pink
-  "sunsetorange": "#ff4500",      // example orange
+  floralprint: "#ffb6c1", // example light pink
+  sunsetorange: "#ff4500", // example orange
   "Tropical Print": "#87ceeb",
-  "lightgreen": "#90ee90",
-  // 🔹 Aage bhi yahan custom colors add kar sakte ho
-  // "midnightblue": "#191970",
-  // "peach": "#ffcba4",
+  lightgreen: "#90ee90",
 };
 
 function formatColor(colorStr) {
   if (!colorStr) return "#ccc";
-  const key = colorStr.toLowerCase().replace(/\s+/g, ""); // remove spaces for mapping
+  const key = colorStr.toLowerCase().replace(/\s+/g, "");
   if (customColors[key]) return customColors[key];
 
-  // Agar standard CSS color hai to use karo
   const s = new Option().style;
   s.color = colorStr.toLowerCase().replace(/\s+/g, "");
-  return s.color !== "" ? s.color : "#ccc"; // fallback gray
+  return s.color !== "" ? s.color : "#ccc";
 }
 
 export default Productdetail;
