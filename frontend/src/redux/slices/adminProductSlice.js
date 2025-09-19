@@ -21,7 +21,6 @@ export const fetchAdminProducts = createAsyncThunk(
       });
       return res.data.products;
     } catch (err) {
-      console.error("❌ fetchAdminProducts error:", err.response?.data || err.message);
       return rejectWithValue(err.response?.data?.message || err.message);
     }
   }
@@ -39,7 +38,6 @@ export const getAdminProductById = createAsyncThunk(
       });
       return res.data.product;
     } catch (err) {
-      console.error("❌ getAdminProductById error:", err.response?.data || err.message);
       return rejectWithValue(err.response?.data?.message || err.message);
     }
   }
@@ -53,16 +51,17 @@ export const createProduct = createAsyncThunk(
       const token = getToken(getState);
       if (!token) throw new Error("Not authenticated");
 
-      // Log payload to debug backend issues
-      console.log("📤 createProduct payload:", productData);
+      // Ensure images are in proper format for backend
+      const payload = {
+        ...productData,
+        images: productData.images.map((img) => ({ url: img.url, alt: img.alt || "" })),
+      };
 
-      const res = await axios.post(`${BASE_URL}/api/admin/products`, productData, {
+      const res = await axios.post(`${BASE_URL}/api/admin/products`, payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      console.log("✅ Product created:", res.data.product);
       return res.data.product;
     } catch (err) {
-      console.error("❌ createProduct error:", err.response?.data || err.message);
       return rejectWithValue(err.response?.data?.message || err.message);
     }
   }
@@ -76,15 +75,16 @@ export const updateProduct = createAsyncThunk(
       const token = getToken(getState);
       if (!token) throw new Error("Not authenticated");
 
-      console.log("📤 updateProduct payload:", updates);
+      const payload = {
+        ...updates,
+        images: updates.images?.map((img) => ({ url: img.url, alt: img.alt || "" })),
+      };
 
-      const res = await axios.put(`${BASE_URL}/api/admin/products/${id}`, updates, {
+      const res = await axios.put(`${BASE_URL}/api/admin/products/${id}`, payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      console.log("✅ Product updated:", res.data.product);
       return res.data.product;
     } catch (err) {
-      console.error("❌ updateProduct error:", err.response?.data || err.message);
       return rejectWithValue(err.response?.data?.message || err.message);
     }
   }
@@ -100,10 +100,8 @@ export const deleteProduct = createAsyncThunk(
       await axios.delete(`${BASE_URL}/api/admin/products/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      console.log("✅ Product deleted:", id);
       return id;
     } catch (err) {
-      console.error("❌ deleteProduct error:", err.response?.data || err.message);
       return rejectWithValue(err.response?.data?.message || err.message);
     }
   }

@@ -7,12 +7,14 @@ import {
   createProduct,
   clearProductDetail,
 } from "../../redux/slices/adminProductSlice";
+import axios from "axios";
+
+const BASE_URL = import.meta.env.VITE_BACKGROUND_URL;
 
 function Handleedit() {
   const { id } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
-
   const { productDetail, loading, error } = useSelector(
     (state) => state.adminProduct
   ) || { productDetail: null, loading: false, error: null };
@@ -38,6 +40,7 @@ function Handleedit() {
 
   const [productData, setProductData] = useState(fallbackProduct);
   const [newImageUrl, setNewImageUrl] = useState("");
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     if (id) dispatch(getAdminProductById(id));
@@ -51,14 +54,10 @@ function Handleedit() {
         ...productDetail,
         sizes: Array.isArray(productDetail.sizes)
           ? productDetail.sizes
-          : String(productDetail.sizes || "")
-              .split(",")
-              .map((v) => v.trim()),
+          : String(productDetail.sizes || "").split(",").map((v) => v.trim()),
         colors: Array.isArray(productDetail.colors)
           ? productDetail.colors
-          : String(productDetail.color || "")
-              .split(",")
-              .map((v) => v.trim()),
+          : String(productDetail.color || "").split(",").map((v) => v.trim()),
         gender: ["Men", "Women", "Unisex"].includes(productDetail.gender)
           ? productDetail.gender
           : "Unisex",
@@ -80,7 +79,6 @@ function Handleedit() {
     }
   };
 
-  // 🔹 Add image via URL
   const handleAddImage = () => {
     if (newImageUrl.trim()) {
       setProductData((prev) => ({
@@ -91,15 +89,29 @@ function Handleedit() {
     }
   };
 
-  // 🔹 Add image via local file
-  const handleFileUpload = (e) => {
+  const handleFileUpload = async (e) => {
     const file = e.target.files[0];
-    if (file) {
-      const previewUrl = URL.createObjectURL(file);
+    if (!file) return;
+    setUploading(true);
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const token = localStorage.getItem("userToken");
+      const res = await axios.post(`${BASE_URL}/api/admin/upload`, formData, {
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" },
+      });
+      const uploadedUrl = res.data.url;
       setProductData((prev) => ({
         ...prev,
-        images: [...prev.images, { url: previewUrl, alt: file.name, file }],
+        images: [...prev.images, { url: uploadedUrl, alt: file.name }],
       }));
+    } catch (err) {
+      console.error("Image upload failed:", err);
+      alert("❌ Image upload failed");
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -112,13 +124,10 @@ function Handleedit() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     const payload = {
       ...productData,
       images: productData.images.map((img) => ({ url: img.url, alt: img.alt || "" })),
     };
-
-    console.log("Submitting product payload:", payload);
 
     try {
       if (id) {
@@ -140,37 +149,17 @@ function Handleedit() {
   return (
     <div className="max-w-5xl mx-auto p-6 shadow-md rounded-md bg-white">
       <h2 className="text-3xl font-bold mb-6">{id ? "Edit Product" : "Add New Product"}</h2>
-
-      {error && (
-        <p className="text-red-600 mb-4 font-medium bg-red-100 p-3 rounded">
-          ⚠️ {error}
-        </p>
-      )}
+      {error && <p className="text-red-600 mb-4 font-medium bg-red-100 p-3 rounded">⚠️ {error}</p>}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {[
-            { name: "name", label: "Product Name" },
-            { name: "sku", label: "SKU" },
-            { name: "price", label: "Price", type: "number" },
-            { name: "stock", label: "Stock", type: "number" },
-            { name: "brand", label: "Brand" },
-            { name: "category", label: "Category" },
-            { name: "collection", label: "Collection" },
-            { name: "material", label: "Material" },
-            { name: "sizes", label: "Sizes (comma separated)" },
-            { name: "colors", label: "Colors (comma separated)" },
-          ].map((field) => (
-            <div key={field.name}>
-              <label className="block font-medium mb-1">{field.label}</label>
+          {["name","sku","price","stock","brand","category","collection","material","sizes","colors"].map((field) => (
+            <div key={field}>
+              <label className="block font-medium mb-1">{field.charAt(0).toUpperCase()+field.slice(1)}</label>
               <input
-                type={field.type || "text"}
-                name={field.name}
-                value={
-                  Array.isArray(productData[field.name])
-                    ? productData[field.name].join(", ")
-                    : productData[field.name]
-                }
+                type={field==="price"||field==="stock"?"number":"text"}
+                name={field}
+                value={Array.isArray(productData[field])?productData[field].join(", "):productData[field]}
                 onChange={handleChange}
                 className="border p-2 rounded w-full"
               />
@@ -179,12 +168,7 @@ function Handleedit() {
 
           <div>
             <label className="block font-medium mb-1">Gender</label>
-            <select
-              name="gender"
-              value={productData.gender}
-              onChange={handleChange}
-              className="border p-2 rounded w-full"
-            >
+            <select name="gender" value={productData.gender} onChange={handleChange} className="border p-2 rounded w-full">
               <option value="Men">Men</option>
               <option value="Women">Women</option>
               <option value="Unisex">Unisex</option>
@@ -194,72 +178,32 @@ function Handleedit() {
 
         <div>
           <label className="block font-medium mb-1">Description</label>
-          <textarea
-            name="description"
-            value={productData.description}
-            onChange={handleChange}
-            className="border p-2 rounded w-full"
-            rows={4}
-          />
+          <textarea name="description" value={productData.description} onChange={handleChange} className="border p-2 rounded w-full" rows={4} />
         </div>
 
         <div>
           <h4 className="font-medium mb-2">Images</h4>
-          {/* URL Input */}
           <div className="flex gap-2 mb-2">
-            <input
-              type="text"
-              placeholder="Image URL"
-              value={newImageUrl}
-              onChange={(e) => setNewImageUrl(e.target.value)}
-              className="border p-2 rounded flex-1"
-            />
-            <button
-              type="button"
-              onClick={handleAddImage}
-              className="bg-green-600 text-white px-4 rounded hover:bg-green-700"
-            >
-              Add URL
-            </button>
+            <input type="text" placeholder="Image URL" value={newImageUrl} onChange={(e)=>setNewImageUrl(e.target.value)} className="border p-2 rounded flex-1" />
+            <button type="button" onClick={handleAddImage} className="bg-green-600 text-white px-4 rounded hover:bg-green-700">Add URL</button>
           </div>
 
-          {/* File Upload */}
           <div className="mb-2">
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleFileUpload}
-              className="border p-2 rounded w-full"
-            />
+            <input type="file" accept="image/*" onChange={handleFileUpload} className="border p-2 rounded w-full" disabled={uploading} />
+            {uploading && <p className="text-sm text-gray-500 mt-1">Uploading...</p>}
           </div>
 
-          {/* Image Preview */}
           <div className="flex gap-3 flex-wrap">
-            {productData.images.map((img, index) => (
+            {productData.images.map((img,index)=>(
               <div key={index} className="relative group">
-                <img
-                  src={img.url}
-                  alt={img.alt || `Product ${index}`}
-                  className="w-24 h-24 object-cover rounded shadow"
-                />
-                <button
-                  type="button"
-                  onClick={() => handleRemoveImage(index)}
-                  className="absolute top-1 right-1 bg-red-600 text-white text-xs px-1 rounded opacity-0 group-hover:opacity-100"
-                >
-                  🗑
-                </button>
+                <img src={img.url} alt={img.alt||`Product ${index}`} className="w-24 h-24 object-cover rounded shadow" />
+                <button type="button" onClick={()=>handleRemoveImage(index)} className="absolute top-1 right-1 bg-red-600 text-white text-xs px-1 rounded opacity-0 group-hover:opacity-100 hover:bg-red-700 transition">🗑</button>
               </div>
             ))}
           </div>
         </div>
 
-        <button
-          type="submit"
-          className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
-        >
-          {id ? "Save Changes" : "Add Product"}
-        </button>
+        <button type="submit" className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">{id?"Save Changes":"Add Product"}</button>
       </form>
     </div>
   );
