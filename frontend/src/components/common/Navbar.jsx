@@ -18,8 +18,8 @@ function Navbar() {
   // ✅ Load from localStorage
   const userId = localStorage.getItem("userId");
   const guestId = localStorage.getItem("guestId");
- const user = useSelector((state) => state.auth.user);
-const isAdmin = user?.role === "admin";
+  const user = useSelector((state) => state.auth.user);
+  const isAdmin = user?.role === "admin";
 
   useEffect(() => {
     if (userId || guestId) {
@@ -48,9 +48,9 @@ const isAdmin = user?.role === "admin";
 
         {/* Right Actions */}
         <div className='flex items-center space-x-6'>
-          {/* ✅ Admin button conditionally rendered */}
+          {/* ✅ Admin button (Desktop only) */}
           {isAdmin && (
-            <Link to="/admin" className='block bg-black px-2 rounded text-sm text-white'>
+            <Link to="/admin" className='hidden md:block bg-black px-2 rounded text-sm text-white'>
               Admin
             </Link>
           )}
@@ -98,6 +98,17 @@ const isAdmin = user?.role === "admin";
             <Link to="/collection?gender=Women" onClick={() => setnavdraweropen(false)} className='block text-gray-300 hover:text-black font-medium uppercase'>Women</Link>
             <Link to="/collection?category=Top+Wear" onClick={() => setnavdraweropen(false)} className='block text-gray-300 hover:text-black font-medium uppercase'>Top Wear</Link>
             <Link to="/collection?category=Bottom+Wear" onClick={() => setnavdraweropen(false)} className='block text-gray-300 hover:text-black font-medium uppercase'>Bottom Wear</Link>
+
+            {/* ✅ Admin button (Mobile only) */}
+            {isAdmin && (
+              <Link
+                to="/admin"
+                onClick={() => setnavdraweropen(false)}
+                className='block bg-black text-white px-3 py-2 rounded text-sm font-medium'
+              >
+                Admin
+              </Link>
+            )}
           </nav>
         </div>
       </div>

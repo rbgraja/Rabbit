@@ -80,7 +80,7 @@ function Collectionpage() {
         ref={sidebarRef}
         className={`${issidebaropen ? "translate-x-0" : "-translate-x-full"} 
         fixed inset-y-0 z-50 left-0 w-64 bg-white overflow-y-auto 
-        transition-transform duration-300 lg:static lg:translate-x-0`}
+        transition-transform duration-300 lg:static lg:translate-x-0 lg:flex-shrink-0 lg:w-[13rem]`}
       >
         <Filtersidebar />
       </div>
