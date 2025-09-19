@@ -32,42 +32,54 @@ function Filtersidebar() {
 
   const [filters, setFiltersState] = useState(defaultFilters);
 
-  const API_BASE_URL = import.meta.env.VITE_API_URL || "";
+  const API_BASE_URL = import.meta.env.VITE_BACKGROUND_URL || "";
 
-  // 🔹 Fetch filters with fallback
-  useEffect(() => {
-    let isMounted = true;
-    const fetchFilters = async () => {
-      try {
-        const { data } = await axios.get(`${API_BASE_URL}/api/products/filters`);
-        if (!isMounted) return;
+ useEffect(() => {
+  let isMounted = true;
 
+  const fetchFilters = async () => {
+    try {
+      const { data } = await axios.get(`${API_BASE_URL}/api/products/filters`);
+      if (!isMounted) return;
+
+      // Agar koi array empty ya undefined ho to fallback
+      const categories = data.categories?.length ? data.categories : ["Shirts","Pants","Shoes"];
+      const sizes = data.sizes?.length ? data.sizes : ["S","M","L","XL"];
+      const materials = data.materials?.length ? data.materials : ["Cotton","Leather"];
+      const brands = data.brands?.length ? data.brands : ["BrandA","BrandB"];
+      const genders = data.genders?.length ? data.genders : ["Male","Female"];
+
+      setFilterOptions({ categories, sizes, materials, brands, genders });
+      setLoadingFilters(false);
+    } catch (err) {
+      console.warn("Failed to fetch filters, using fallback.", err.message);
+      if (isMounted) {
         setFilterOptions({
-          categories: data.categories || [],
-          sizes: data.sizes || [],
-          materials: data.materials || [],
-          brands: data.brands || [],
-          genders: data.genders || [],
+          categories: ["Shirts","Pants","Shoes"],
+          sizes: ["S","M","L","XL"],
+          materials: ["Cotton","Leather"],
+          brands: ["BrandA","BrandB"],
+          genders: ["Male","Female"],
         });
         setLoadingFilters(false);
-      } catch (err) {
-        console.warn("Failed to fetch filters, using fallback.", err.message);
-        if (isMounted) {
-          setFilterOptions({
-            categories: ["Shirts", "Pants", "Shoes"],
-            sizes: ["S", "M", "L", "XL"],
-            materials: ["Cotton", "Leather"],
-            brands: ["BrandA", "BrandB"],
-            genders: ["Male", "Female"],
-          });
-          setLoadingFilters(false);
-        }
       }
-    };
+    }
+  };
 
+  // Agar pehle empty array mili ya undefined, dobara fetch
+  if (
+    !filterOptions.categories.length &&
+    !filterOptions.sizes.length &&
+    !filterOptions.materials.length &&
+    !filterOptions.brands.length &&
+    !filterOptions.genders.length
+  ) {
     fetchFilters();
-    return () => { isMounted = false };
-  }, [API_BASE_URL]);
+  }
+
+  return () => { isMounted = false };
+}, [API_BASE_URL, filterOptions]);
+
 
   // 🔹 Parse URL params
   useEffect(() => {
