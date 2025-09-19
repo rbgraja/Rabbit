@@ -8,6 +8,8 @@ import {
   clearProductDetail,
 } from "../../redux/slices/adminProductSlice";
 import axios from "axios";
+import Skeleton from "react-loading-skeleton";
+import "react-loading-skeleton/dist/skeleton.css";
 
 const BASE_URL = import.meta.env.VITE_BACKGROUND_URL;
 
@@ -15,9 +17,12 @@ function Handleedit() {
   const { id } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { productDetail, loading, error } = useSelector(
-    (state) => state.adminProduct
-  ) || { productDetail: null, loading: false, error: null };
+  const { productDetail, loading, error } =
+    useSelector((state) => state.adminProduct) || {
+      productDetail: null,
+      loading: false,
+      error: null,
+    };
 
   const fallbackProduct = {
     name: "",
@@ -54,15 +59,22 @@ function Handleedit() {
         ...productDetail,
         sizes: Array.isArray(productDetail.sizes)
           ? productDetail.sizes
-          : String(productDetail.sizes || "").split(",").map((v) => v.trim()),
+          : String(productDetail.sizes || "")
+              .split(",")
+              .map((v) => v.trim()),
         colors: Array.isArray(productDetail.colors)
           ? productDetail.colors
-          : String(productDetail.color || "").split(",").map((v) => v.trim()),
+          : String(productDetail.color || "")
+              .split(",")
+              .map((v) => v.trim()),
         gender: ["Men", "Women", "Unisex"].includes(productDetail.gender)
           ? productDetail.gender
           : "Unisex",
         images: Array.isArray(productDetail.images)
-          ? productDetail.images.map((img) => ({ url: img.url, alt: img.alt || "" }))
+          ? productDetail.images.map((img) => ({
+              url: img.url,
+              alt: img.alt || "",
+            }))
           : [],
       });
     }
@@ -73,7 +85,10 @@ function Handleedit() {
     if (name === "price" || name === "stock") {
       setProductData({ ...productData, [name]: Number(value) });
     } else if (name === "sizes" || name === "colors") {
-      setProductData({ ...productData, [name]: value.split(",").map((v) => v.trim()) });
+      setProductData({
+        ...productData,
+        [name]: value.split(",").map((v) => v.trim()),
+      });
     } else {
       setProductData({ ...productData, [name]: value });
     }
@@ -100,7 +115,10 @@ function Handleedit() {
     try {
       const token = localStorage.getItem("userToken");
       const res = await axios.post(`${BASE_URL}/api/admin/upload`, formData, {
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
       });
       const uploadedUrl = res.data.url;
       setProductData((prev) => ({
@@ -126,7 +144,10 @@ function Handleedit() {
     e.preventDefault();
     const payload = {
       ...productData,
-      images: productData.images.map((img) => ({ url: img.url, alt: img.alt || "" })),
+      images: productData.images.map((img) => ({
+        url: img.url,
+        alt: img.alt || "",
+      })),
     };
 
     try {
@@ -144,22 +165,77 @@ function Handleedit() {
     }
   };
 
-  if (loading) return <p className="text-center">⏳ Loading product...</p>;
+  // 🟢 Skeleton Loader
+  if (loading) {
+    return (
+      <div className="max-w-5xl mx-auto p-6 shadow-md rounded-md bg-white">
+        <Skeleton height={40} width="50%" className="mb-6" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {[...Array(8)].map((_, i) => (
+            <div key={i}>
+              <Skeleton height={20} width="40%" className="mb-2" />
+              <Skeleton height={38} />
+            </div>
+          ))}
+        </div>
+        <div className="mt-4">
+          <Skeleton height={20} width="30%" className="mb-2" />
+          <Skeleton height={100} />
+        </div>
+        <div className="mt-4">
+          <Skeleton height={20} width="30%" className="mb-2" />
+          <div className="flex gap-2">
+            {[...Array(3)].map((_, i) => (
+              <Skeleton key={i} height={96} width={96} />
+            ))}
+          </div>
+        </div>
+        <Skeleton
+          height={40}
+          width={160}
+          className="mt-6 rounded bg-gray-300"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-5xl mx-auto p-6 shadow-md rounded-md bg-white">
-      <h2 className="text-3xl font-bold mb-6">{id ? "Edit Product" : "Add New Product"}</h2>
-      {error && <p className="text-red-600 mb-4 font-medium bg-red-100 p-3 rounded">⚠️ {error}</p>}
+      <h2 className="text-3xl font-bold mb-6">
+        {id ? "Edit Product" : "Add New Product"}
+      </h2>
+      {error && (
+        <p className="text-red-600 mb-4 font-medium bg-red-100 p-3 rounded">
+          ⚠️ {error}
+        </p>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {["name","sku","price","stock","brand","category","collection","material","sizes","colors"].map((field) => (
+          {[
+            "name",
+            "sku",
+            "price",
+            "stock",
+            "brand",
+            "category",
+            "collection",
+            "material",
+            "sizes",
+            "colors",
+          ].map((field) => (
             <div key={field}>
-              <label className="block font-medium mb-1">{field.charAt(0).toUpperCase()+field.slice(1)}</label>
+              <label className="block font-medium mb-1">
+                {field.charAt(0).toUpperCase() + field.slice(1)}
+              </label>
               <input
-                type={field==="price"||field==="stock"?"number":"text"}
+                type={field === "price" || field === "stock" ? "number" : "text"}
                 name={field}
-                value={Array.isArray(productData[field])?productData[field].join(", "):productData[field]}
+                value={
+                  Array.isArray(productData[field])
+                    ? productData[field].join(", ")
+                    : productData[field]
+                }
                 onChange={handleChange}
                 className="border p-2 rounded w-full"
               />
@@ -168,7 +244,12 @@ function Handleedit() {
 
           <div>
             <label className="block font-medium mb-1">Gender</label>
-            <select name="gender" value={productData.gender} onChange={handleChange} className="border p-2 rounded w-full">
+            <select
+              name="gender"
+              value={productData.gender}
+              onChange={handleChange}
+              className="border p-2 rounded w-full"
+            >
               <option value="Men">Men</option>
               <option value="Women">Women</option>
               <option value="Unisex">Unisex</option>
@@ -178,32 +259,73 @@ function Handleedit() {
 
         <div>
           <label className="block font-medium mb-1">Description</label>
-          <textarea name="description" value={productData.description} onChange={handleChange} className="border p-2 rounded w-full" rows={4} />
+          <textarea
+            name="description"
+            value={productData.description}
+            onChange={handleChange}
+            className="border p-2 rounded w-full"
+            rows={4}
+          />
         </div>
 
         <div>
           <h4 className="font-medium mb-2">Images</h4>
           <div className="flex gap-2 mb-2">
-            <input type="text" placeholder="Image URL" value={newImageUrl} onChange={(e)=>setNewImageUrl(e.target.value)} className="border p-2 rounded flex-1" />
-            <button type="button" onClick={handleAddImage} className="bg-green-600 text-white px-4 rounded hover:bg-green-700">Add URL</button>
+            <input
+              type="text"
+              placeholder="Image URL"
+              value={newImageUrl}
+              onChange={(e) => setNewImageUrl(e.target.value)}
+              className="border p-2 rounded flex-1"
+            />
+            <button
+              type="button"
+              onClick={handleAddImage}
+              className="bg-green-600 text-white px-4 rounded hover:bg-green-700"
+            >
+              Add URL
+            </button>
           </div>
 
           <div className="mb-2">
-            <input type="file" accept="image/*" onChange={handleFileUpload} className="border p-2 rounded w-full" disabled={uploading} />
-            {uploading && <p className="text-sm text-gray-500 mt-1">Uploading...</p>}
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleFileUpload}
+              className="border p-2 rounded w-full"
+              disabled={uploading}
+            />
+            {uploading && (
+              <p className="text-sm text-gray-500 mt-1">Uploading...</p>
+            )}
           </div>
 
           <div className="flex gap-3 flex-wrap">
-            {productData.images.map((img,index)=>(
+            {productData.images.map((img, index) => (
               <div key={index} className="relative group">
-                <img src={img.url} alt={img.alt||`Product ${index}`} className="w-24 h-24 object-cover rounded shadow" />
-                <button type="button" onClick={()=>handleRemoveImage(index)} className="absolute top-1 right-1 bg-red-600 text-white text-xs px-1 rounded opacity-0 group-hover:opacity-100 hover:bg-red-700 transition">🗑</button>
+                <img
+                  src={img.url}
+                  alt={img.alt || `Product ${index}`}
+                  className="w-24 h-24 object-cover rounded shadow"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleRemoveImage(index)}
+                  className="absolute top-1 right-1 bg-red-600 text-white text-xs px-1 rounded opacity-0 group-hover:opacity-100 hover:bg-red-700 transition"
+                >
+                  🗑
+                </button>
               </div>
             ))}
           </div>
         </div>
 
-        <button type="submit" className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">{id?"Save Changes":"Add Product"}</button>
+        <button
+          type="submit"
+          className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
+        >
+          {id ? "Save Changes" : "Add Product"}
+        </button>
       </form>
     </div>
   );

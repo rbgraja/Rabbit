@@ -10,13 +10,19 @@ import { useDispatch, useSelector } from 'react-redux';
 import { fetchProductFilters, clearFilters } from '../redux/slices/productSlice';
 import axios from 'axios';
 
+// ✅ Local Skeleton (reusable, no extra file needed)
+function Skeleton({ className = "" }) {
+  return <div className={`animate-pulse rounded-md bg-gray-200 ${className}`} />;
+}
+
 function Home() {
   const dispatch = useDispatch();
   const { products, loading, error } = useSelector((state) => state.products);
   const [bestSellerProduct, setBestSellerProduct] = useState(null);
+  const [bestSellerLoading, setBestSellerLoading] = useState(true);
 
   useEffect(() => {
-    // ✅ Reset global filters first (important!)
+    // ✅ Reset global filters
     dispatch(clearFilters());
 
     // ✅ Fetch filtered products only for 'Women' top wears
@@ -33,6 +39,8 @@ function Home() {
         }
       } catch (err) {
         console.error('Best Seller Error:', err);
+      } finally {
+        setBestSellerLoading(false);
       }
     };
 
@@ -47,10 +55,19 @@ function Home() {
 
       {/* ⭐ Best Seller Section */}
       <h2 className="text-3xl text-center font-bold mb-4">Best Seller</h2>
-      {bestSellerProduct ? (
+      {bestSellerLoading ? (
+        // ✅ Skeleton for Best Seller
+        <div className="flex justify-center">
+          <div className="space-y-3 w-72">
+            <Skeleton className="h-64 w-full" />
+            <Skeleton className="h-6 w-3/4" />
+            <Skeleton className="h-4 w-1/2" />
+          </div>
+        </div>
+      ) : bestSellerProduct ? (
         <Productdetail productId={bestSellerProduct._id} />
       ) : (
-        <p className="text-center text-gray-500">Loading best seller...</p>
+        <p className="text-center text-gray-500">No best seller found</p>
       )}
 
       {/* 👗 Women's Topwear */}
@@ -58,7 +75,16 @@ function Home() {
         Top Wears for Women
       </h2>
       {loading ? (
-        <p className="text-center text-gray-500">Loading products...</p>
+        // ✅ Skeleton Grid for Women’s Topwear
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {Array.from({ length: 6 }).map((_, idx) => (
+            <div key={idx} className="space-y-3">
+              <Skeleton className="h-64 w-full" />
+              <Skeleton className="h-6 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+            </div>
+          ))}
+        </div>
       ) : error ? (
         <p className="text-center text-red-500">{error}</p>
       ) : (

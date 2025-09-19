@@ -3,6 +3,11 @@ import { Link, useParams, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchOrderDetailById } from "../redux/slices/orderSlice";
 
+// ✅ Local Skeleton Component
+function Skeleton({ className = "" }) {
+  return <div className={`animate-pulse rounded-md bg-gray-200 ${className}`} />;
+}
+
 function OrderDetailPage() {
   const { id } = useParams();
   const dispatch = useDispatch();
@@ -38,9 +43,61 @@ function OrderDetailPage() {
     );
   }
 
-  if (loading) return <p className="p-6 text-center">Loading order details...</p>;
-  if (error) return <p className="p-6 text-center text-red-500 font-medium">{error}</p>;
-  if (!order?._id) return <p className="p-6 text-center text-gray-500">Order not found.</p>;
+  // ✅ Skeleton Loader
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto p-4 sm:p-6">
+        <h2 className="text-2xl md:text-3xl font-bold mb-6">
+          <Skeleton className="h-8 w-48" />
+        </h2>
+
+        <div className="p-4 sm:p-6 rounded-lg border space-y-6">
+          <div className="flex justify-between">
+            <div className="space-y-2">
+              <Skeleton className="h-6 w-40" />
+              <Skeleton className="h-4 w-32" />
+            </div>
+            <div className="space-y-2 text-right">
+              <Skeleton className="h-6 w-20" />
+              <Skeleton className="h-6 w-24" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            {Array.from({ length: 3 }).map((_, idx) => (
+              <div key={idx} className="space-y-2">
+                <Skeleton className="h-5 w-28" />
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-4 w-24" />
+              </div>
+            ))}
+          </div>
+
+          <div className="space-y-3">
+            <Skeleton className="h-5 w-28" />
+            {Array.from({ length: 3 }).map((_, idx) => (
+              <div
+                key={idx}
+                className="flex items-center gap-3 border-b pb-3"
+              >
+                <Skeleton className="w-12 h-12" />
+                <Skeleton className="h-4 w-40" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error)
+    return (
+      <p className="p-6 text-center text-red-500 font-medium">{error}</p>
+    );
+  if (!order?._id)
+    return (
+      <p className="p-6 text-center text-gray-500">Order not found.</p>
+    );
 
   const isAdminRoute = location.pathname.startsWith("/admin/orders");
 
@@ -82,7 +139,7 @@ function OrderDetailPage() {
           </div>
         </div>
 
-        {/* ✅ Customer Info Section */}
+        {/* Customer Info */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 mb-8">
           <div>
             <h4 className="text-lg font-semibold mb-2">Customer Info</h4>
@@ -130,17 +187,24 @@ function OrderDetailPage() {
                         alt={item.name}
                         className="w-12 h-12 object-cover rounded border"
                       />
-                      <span className="font-medium text-gray-800">{item.name}</span>
+                      <span className="font-medium text-gray-800">
+                        {item.name}
+                      </span>
                     </td>
                     <td className="px-4 py-3">${item.price.toFixed(2)}</td>
-                    <td className="px-4 py-3">{item.qty || item.quantity}</td>
+                    <td className="px-4 py-3">
+                      {item.qty || item.quantity}
+                    </td>
                     <td className="px-4 py-3 font-semibold">
                       ${(item.price * (item.qty || item.quantity)).toFixed(2)}
                     </td>
                   </tr>
                 ))}
                 <tr className="bg-gray-50">
-                  <td colSpan="3" className="px-4 py-3 text-right font-semibold">
+                  <td
+                    colSpan="3"
+                    className="px-4 py-3 text-right font-semibold"
+                  >
                     Subtotal:
                   </td>
                   <td className="px-4 py-3 font-bold">

@@ -1,13 +1,20 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchAdminProducts, deleteProduct } from "../../redux/slices/adminProductSlice";
+import {
+  fetchAdminProducts,
+  deleteProduct,
+} from "../../redux/slices/adminProductSlice";
 import { useNavigate } from "react-router-dom";
+import Skeleton from "react-loading-skeleton";
+import "react-loading-skeleton/dist/skeleton.css";
 
 function Productmanagement() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const { products, loading, error } = useSelector((state) => state.adminProduct);
+  const { products, loading, error } = useSelector(
+    (state) => state.adminProduct
+  );
 
   const [pendingDeleteProduct, setPendingDeleteProduct] = useState(null);
 
@@ -69,7 +76,6 @@ function Productmanagement() {
         </div>
       )}
 
-      {loading && <p className="text-gray-600 italic mb-4">Loading products...</p>}
       {error && <p className="text-red font-semibold mb-4">{error}</p>}
 
       <div className="overflow-x-auto shadow-md sm:rounded-lg">
@@ -84,23 +90,55 @@ function Productmanagement() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {products.length === 0 && !loading ? (
+            {loading ? (
+              [...Array(6)].map((_, i) => (
+                <tr key={i}>
+                  <td className="py-3 px-4">
+                    <Skeleton width={150} />
+                  </td>
+                  <td className="py-3 px-4">
+                    <Skeleton width={80} />
+                  </td>
+                  <td className="py-3 px-4">
+                    <Skeleton width={100} />
+                  </td>
+                  <td className="py-3 px-4">
+                    <Skeleton width={90} />
+                  </td>
+                  <td className="py-3 px-4 flex space-x-2">
+                    <Skeleton width={60} height={28} />
+                    <Skeleton width={60} height={28} />
+                  </td>
+                </tr>
+              ))
+            ) : products.length === 0 ? (
               <tr>
-                <td colSpan="5" className="py-4 px-4 text-center text-gray-400 italic">
+                <td
+                  colSpan="5"
+                  className="py-4 px-4 text-center text-gray-400 italic"
+                >
                   No products available.
                 </td>
               </tr>
             ) : (
               products.map((product) => (
                 <tr key={product._id}>
-                  <td className="py-3 px-4 whitespace-nowrap">{product.name}</td>
-                  <td className="py-3 px-4">${product.price?.toFixed(2) || "0.00"}</td>
+                  <td className="py-3 px-4 whitespace-nowrap">
+                    {product.name}
+                  </td>
+                  <td className="py-3 px-4">
+                    ${product.price?.toFixed(2) || "0.00"}
+                  </td>
                   <td className="py-3 px-4">{product.sku || "-"}</td>
                   <td className="py-3 px-4">
                     {product.stock > 0 ? (
-                      <span className="text-green-600 font-medium">{product.stock}</span>
+                      <span className="text-green-600 font-medium">
+                        {product.stock}
+                      </span>
                     ) : (
-                      <span className="text-red font-medium">Out of Stock</span>
+                      <span className="text-red font-medium">
+                        Out of Stock
+                      </span>
                     )}
                   </td>
                   <td className="py-3 px-4 space-x-2">

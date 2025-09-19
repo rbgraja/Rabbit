@@ -7,13 +7,20 @@ import { useDispatch, useSelector } from 'react-redux';
 import { fetchProductFilters, setFilters, clearFilters } from '../redux/slices/productSlice';
 import { useSearchParams } from 'react-router-dom';
 
+// ✅ Local Skeleton (no extra file needed)
+function Skeleton({ className = "" }) {
+  return (
+    <div className={`animate-pulse rounded-md bg-gray-200 ${className}`} />
+  );
+}
+
 function Collectionpage() {
   const [searchParams] = useSearchParams();
   const dispatch = useDispatch();
   const sidebarRef = useRef(null);
   const [issidebaropen, setissidebaropen] = useState(false);
 
-  const { products, filters, loading, error } = useSelector((state) => state.products);
+  const { products, loading, error } = useSelector((state) => state.products);
 
   const togglesidebar = () => setissidebaropen(!issidebaropen);
 
@@ -23,7 +30,7 @@ function Collectionpage() {
     }
   };
 
-  // ✅ Step 1: Parse and apply filters directly from URL
+  // ✅ Parse filters from URL
   useEffect(() => {
     const params = {};
     const keys = [
@@ -47,14 +54,10 @@ function Collectionpage() {
       }
     });
 
-    // Reset + set + fetch manually to avoid double dispatch
     dispatch(clearFilters());
     dispatch(setFilters(params));
-    dispatch(fetchProductFilters(params)); // ✅ use params directly
+    dispatch(fetchProductFilters(params));
   }, [searchParams, dispatch]);
-
-  // ✅ Step 2: Remove filters dependency fetch (prevent double render)
-  // ❌ DON'T use `useEffect(() => dispatch(fetchProductFilters(filters)), [filters])`
 
   // ✅ Sidebar click outside
   useEffect(() => {
@@ -89,8 +92,18 @@ function Collectionpage() {
       <div className='flex-grow p-4'>
         <h2 className='text-2xl uppercase mb-4'>All Collection</h2>
         <Sortoption />
+
         {loading ? (
-          <p className="text-center text-gray-500">Loading products...</p>
+          // ✅ Skeleton Loader
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array.from({ length: 6 }).map((_, idx) => (
+              <div key={idx} className="space-y-3">
+                <Skeleton className="h-64 w-full" />
+                <Skeleton className="h-6 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+              </div>
+            ))}
+          </div>
         ) : error ? (
           <p className="text-center text-red-500">{error}</p>
         ) : (

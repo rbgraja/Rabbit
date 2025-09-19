@@ -3,6 +3,8 @@ import axios from "axios";
 import { useDispatch, useSelector } from "react-redux";
 import { deleteOrderById } from "../../redux/slices/adminOrderSlice";
 import { Link } from "react-router-dom";
+import Skeleton from "react-loading-skeleton";
+import "react-loading-skeleton/dist/skeleton.css";
 
 function AdminOrders() {
   const [orders, setOrders] = useState([]);
@@ -136,7 +138,33 @@ function AdminOrders() {
     <div className="max-w-6xl mx-auto p-6">
       <h2 className="text-2xl font-bold mb-6">📦 Admin - All Orders</h2>
 
-      {loading && <p>Loading orders...</p>}
+      {loading && (
+        <div className="overflow-x-auto bg-white shadow-md rounded-lg">
+          <table className="min-w-full text-sm text-gray-700">
+            <thead className="bg-gray-100 text-xs uppercase">
+              <tr>
+                {["Order ID","User","Total","Status","Paid","Action","Delete"].map((h)=>(
+                  <th key={h} className="py-3 px-4">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {[...Array(5)].map((_, i) => (
+                <tr key={i} className="border-b">
+                  <td className="py-3 px-4"><Skeleton width={120} /></td>
+                  <td className="py-3 px-4"><Skeleton width={100} /></td>
+                  <td className="py-3 px-4"><Skeleton width={80} /></td>
+                  <td className="py-3 px-4"><Skeleton width={100} height={28} /></td>
+                  <td className="py-3 px-4 text-center"><Skeleton circle width={20} height={20} /></td>
+                  <td className="py-3 px-4 text-center"><Skeleton width={60} /></td>
+                  <td className="py-3 px-4 text-center"><Skeleton width={70} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
       {error && <p className="text-red-600 font-semibold mb-4">Error: {error}</p>}
 
       {!loading && !error && (
@@ -189,9 +217,7 @@ function AdminOrders() {
                         type="checkbox"
                         disabled={updatingOrderId === order._id}
                         checked={!!order.isPaid}
-                        onChange={(e) =>
-                          updatePaymentStatus(order._id, e.target.checked)
-                        }
+                        onChange={(e) => updatePaymentStatus(order._id, e.target.checked)}
                       />
                     </td>
                     <td className="py-3 px-4 text-center">

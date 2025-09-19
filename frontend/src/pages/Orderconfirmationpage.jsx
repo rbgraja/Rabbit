@@ -1,21 +1,77 @@
 import React, { useEffect, useState } from 'react';
 
+// ✅ Local Skeleton (reusable, same as other pages)
+function Skeleton({ className = "" }) {
+  return <div className={`animate-pulse rounded-md bg-gray-200 ${className}`} />;
+}
+
 function Orderconfirmationpage() {
   const [checkout, setCheckout] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-  const storedOrder = localStorage.getItem("lastOrder");
-  if (storedOrder) {
-    const parsed = JSON.parse(storedOrder);
-    setCheckout(parsed?.order);
-  }
-}, []);
+    const storedOrder = localStorage.getItem("lastOrder");
+    if (storedOrder) {
+      const parsed = JSON.parse(storedOrder);
+      setCheckout(parsed?.order);
+    }
+    setLoading(false);
+  }, []);
 
   const calculateEstimatedDelivery = (createdAt) => {
     const orderDate = new Date(createdAt);
     orderDate.setDate(orderDate.getDate() + 10);
     return orderDate.toLocaleDateString();
   };
+
+  // ✅ Skeleton Loader while fetching
+  if (loading) {
+    return (
+      <div className="max-w-4xl mx-auto p-6">
+        <h1 className="text-4xl font-bold text-center text-emerald-700 mb-8">
+          <Skeleton className="h-10 w-2/3 mx-auto" />
+        </h1>
+
+        <div className="p-6 rounded-lg border space-y-6">
+          <div className="flex justify-between">
+            <div className="space-y-2">
+              <Skeleton className="h-6 w-40" />
+              <Skeleton className="h-4 w-32" />
+            </div>
+            <Skeleton className="h-4 w-32" />
+          </div>
+
+          <div className="space-y-4">
+            {Array.from({ length: 3 }).map((_, idx) => (
+              <div key={idx} className="flex items-center gap-4">
+                <Skeleton className="w-16 h-16" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
+                <div className="text-right space-y-2">
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-3 w-12" />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-2 gap-8">
+            <div className="space-y-2">
+              <Skeleton className="h-5 w-20" />
+              <Skeleton className="h-4 w-32" />
+            </div>
+            <div className="space-y-2">
+              <Skeleton className="h-5 w-20" />
+              <Skeleton className="h-4 w-40" />
+              <Skeleton className="h-4 w-28" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!checkout) {
     return <div className="p-6 text-center">No order found.</div>;

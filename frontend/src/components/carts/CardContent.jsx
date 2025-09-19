@@ -6,6 +6,8 @@ import {
   removeFromCartAsync,
 } from "../../redux/slices/cartSlice";
 import { RiDeleteBin3Line } from "react-icons/ri";
+import Skeleton from "react-loading-skeleton";
+import "react-loading-skeleton/dist/skeleton.css";
 
 function CardContent() {
   const dispatch = useDispatch();
@@ -73,8 +75,32 @@ function CardContent() {
     );
   };
 
+  // ✅ Skeleton Loader while cart loading
   if (loading) {
-    return <p className="text-center mt-4 text-gray-500">Loading cart...</p>;
+    return (
+      <div className="space-y-4 p-4">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="flex items-start justify-between border-b pb-4">
+            <div className="flex items-start">
+              <Skeleton width={80} height={100} className="mr-4 rounded" />
+              <div>
+                <Skeleton width={120} height={20} />
+                <Skeleton width={80} height={15} className="mt-2" />
+                <div className="flex items-center mt-3 space-x-2">
+                  <Skeleton width={30} height={30} />
+                  <Skeleton width={20} height={20} />
+                  <Skeleton width={30} height={30} />
+                </div>
+              </div>
+            </div>
+            <div className="text-right">
+              <Skeleton width={60} height={20} />
+              <Skeleton circle width={24} height={24} className="mt-2" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
   }
 
   if (!cartItems.length) {

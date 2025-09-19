@@ -5,13 +5,14 @@ import {
   createUser,
   updateUser,
   deleteUser,
-} from "../../redux/slices/adminSlice"; // correct import
+} from "../../redux/slices/adminSlice";
+import Skeleton from "react-loading-skeleton";
+import "react-loading-skeleton/dist/skeleton.css";
 
 function Usermanagement() {
   const dispatch = useDispatch();
-  const { adminUsers, loading, error } = useSelector((state) => state.admin); // use adminUsers from admin slice
+  const { adminUsers, loading, error } = useSelector((state) => state.admin);
 
-  // Form state
   const [formdata, setformdata] = useState({
     name: "",
     email: "",
@@ -19,7 +20,6 @@ function Usermanagement() {
     role: "customer",
   });
 
-  // Update form inputs
   const handleform = (e) => {
     setformdata({
       ...formdata,
@@ -27,7 +27,6 @@ function Usermanagement() {
     });
   };
 
-  // Submit new user form
   const handleSubmit = (e) => {
     e.preventDefault();
     dispatch(createUser(formdata));
@@ -39,19 +38,16 @@ function Usermanagement() {
     });
   };
 
-  // Change user role (calls updateUser thunk)
   const handlerolechange = (userid, newrole) => {
     dispatch(updateUser({ userId: userid, updates: { role: newrole } }));
   };
 
-  // Delete user
   const handledeleteuser = (userid) => {
     if (window.confirm("Are you sure you want to delete this user?")) {
       dispatch(deleteUser(userid));
     }
   };
 
-  // Fetch users on mount
   useEffect(() => {
     dispatch(fetchAllUsers());
   }, [dispatch]);
@@ -119,13 +115,8 @@ function Usermanagement() {
         </form>
       </div>
 
-      {/* Show loading / error */}
-      {loading && <p>Loading users...</p>}
-      {error && (
-        <p className="text-red font-semibold mb-4">Error: {error}</p>
-      )}
+      {error && <p className="text-red font-semibold mb-4">Error: {error}</p>}
 
-      {/* User List Table */}
       <div className="overflow-x-auto shadow-md sm:rounded-lg">
         <table className="min-w-full text-left text-gray-500">
           <thead className="bg-gray-100 text-xs uppercase text-gray-700">
@@ -137,7 +128,24 @@ function Usermanagement() {
             </tr>
           </thead>
           <tbody>
-            {adminUsers && adminUsers.length > 0 ? (
+            {loading ? (
+              [...Array(6)].map((_, i) => (
+                <tr key={i}>
+                  <td className="p-4">
+                    <Skeleton width={120} />
+                  </td>
+                  <td className="p-4">
+                    <Skeleton width={180} />
+                  </td>
+                  <td className="p-4">
+                    <Skeleton width={100} />
+                  </td>
+                  <td className="p-4">
+                    <Skeleton width={70} height={30} />
+                  </td>
+                </tr>
+              ))
+            ) : adminUsers && adminUsers.length > 0 ? (
               adminUsers.map((user) => (
                 <tr key={user._id} className="border-b hover:bg-gray-50">
                   <td className="p-4">{user.name}</td>
@@ -145,7 +153,9 @@ function Usermanagement() {
                   <td className="p-4">
                     <select
                       value={user.role}
-                      onChange={(e) => handlerolechange(user._id, e.target.value)}
+                      onChange={(e) =>
+                        handlerolechange(user._id, e.target.value)
+                      }
                       className="p-2 border rounded"
                     >
                       <option value="customer">Customer</option>
