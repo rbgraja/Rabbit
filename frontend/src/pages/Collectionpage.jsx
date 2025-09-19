@@ -106,6 +106,11 @@ function Collectionpage() {
           </div>
         ) : error ? (
           <p className="text-center text-red-500">{error}</p>
+        ) : products && products.length === 0 ? (
+          // ✅ Agar koi product nahi mila
+          <p className="text-center text-gray-600 text-lg font-medium mt-10">
+            Sorry, this product is not available.
+          </p>
         ) : (
           <Productsgrid products={products} />
         )}

@@ -139,13 +139,29 @@ router.get("/", async (req, res) => {
  */
 router.get("/filters", async (req, res) => {
   try {
+    // 🔹 Build query dynamically
+    const query = {};
+
+    if (req.query.gender) query.gender = req.query.gender;
+    if (req.query.category) query.category = req.query.category;
+    if (req.query.brand) query.brand = { $in: req.query.brand.split(",") };
+    if (req.query.size) query.sizes = { $in: req.query.size.split(",") };
+    if (req.query.material) query.material = { $in: req.query.material.split(",") };
+    if (req.query.color) query.colors = { $in: req.query.color.split(",") };
+
+    if (req.query.minPrice || req.query.maxPrice) {
+      query.price = {};
+      if (req.query.minPrice) query.price.$gte = Number(req.query.minPrice);
+      if (req.query.maxPrice) query.price.$lte = Number(req.query.maxPrice);
+    }
+
     // Force arrays and filter falsy values
-    const categories = (await Product.distinct("category")) || [];
-    const colors = (await Product.distinct("colors")) || [];
-    const sizes = (await Product.distinct("sizes")) || [];
-    const materials = (await Product.distinct("material")) || [];
-    const brands = (await Product.distinct("brand")) || [];
-    const genders = (await Product.distinct("gender")) || [];
+    const categories = (await Product.distinct("category", query)) || [];
+    const colors = (await Product.distinct("colors", query)) || [];
+    const sizes = (await Product.distinct("sizes", query)) || [];
+    const materials = (await Product.distinct("material", query)) || [];
+    const brands = (await Product.distinct("brand", query)) || [];
+    const genders = (await Product.distinct("gender", query)) || [];
 
     res.status(200).json({
       categories: categories.filter(Boolean),
@@ -158,7 +174,7 @@ router.get("/filters", async (req, res) => {
   } catch (err) {
     console.error("❌ Fetch Filter Options Error:", err.message);
 
-    // Retry logic (optional)
+    // Retry logic (same as tumhare code me tha)
     let retries = 0;
     const maxRetries = 3;
     let success = false;
@@ -166,12 +182,27 @@ router.get("/filters", async (req, res) => {
 
     while (retries < maxRetries && !success) {
       try {
-        const categories = (await Product.distinct("category")) || [];
-        const colors = (await Product.distinct("colors")) || [];
-        const sizes = (await Product.distinct("sizes")) || [];
-        const materials = (await Product.distinct("material")) || [];
-        const brands = (await Product.distinct("brand")) || [];
-        const genders = (await Product.distinct("gender")) || [];
+        const query = {};
+
+        if (req.query.gender) query.gender = req.query.gender;
+        if (req.query.category) query.category = req.query.category;
+        if (req.query.brand) query.brand = { $in: req.query.brand.split(",") };
+        if (req.query.size) query.sizes = { $in: req.query.size.split(",") };
+        if (req.query.material) query.material = { $in: req.query.material.split(",") };
+        if (req.query.color) query.colors = { $in: req.query.color.split(",") };
+
+        if (req.query.minPrice || req.query.maxPrice) {
+          query.price = {};
+          if (req.query.minPrice) query.price.$gte = Number(req.query.minPrice);
+          if (req.query.maxPrice) query.price.$lte = Number(req.query.maxPrice);
+        }
+
+        const categories = (await Product.distinct("category", query)) || [];
+        const colors = (await Product.distinct("colors", query)) || [];
+        const sizes = (await Product.distinct("sizes", query)) || [];
+        const materials = (await Product.distinct("material", query)) || [];
+        const brands = (await Product.distinct("brand", query)) || [];
+        const genders = (await Product.distinct("gender", query)) || [];
 
         res.status(200).json({
           categories: categories.filter(Boolean),

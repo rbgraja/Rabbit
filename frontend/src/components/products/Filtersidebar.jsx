@@ -36,53 +36,39 @@ function Filtersidebar() {
 
   const API_BASE_URL = import.meta.env.VITE_BACKGROUND_URL || "";
 
-  useEffect(() => {
-    let isMounted = true;
+  // 🔹 Fetch filters dynamically based on current selection
+  const fetchFilters = async (activeFilters) => {
+    try {
+      setLoadingFilters(true);
 
-    const fetchFilters = async () => {
-      try {
-        const { data } = await axios.get(`${API_BASE_URL}/api/products/filters`);
-        if (!isMounted) return;
+      const query = new URLSearchParams();
+      if (activeFilters.category) query.set("category", activeFilters.category);
+      if (activeFilters.gender) query.set("gender", activeFilters.gender);
+      if (activeFilters.size.length > 0) query.set("size", activeFilters.size.join(","));
+      if (activeFilters.material.length > 0) query.set("material", activeFilters.material.join(","));
+      if (activeFilters.brand.length > 0) query.set("brand", activeFilters.brand.join(","));
+      if (activeFilters.minPrice > 0) query.set("minPrice", activeFilters.minPrice);
+      if (activeFilters.maxPrice < 200) query.set("maxPrice", activeFilters.maxPrice);
 
-        const categories = data.categories?.length ? data.categories : ["Shirts", "Pants", "Shoes"];
-        const sizes = data.sizes?.length ? data.sizes : ["S", "M", "L", "XL"];
-        const materials = data.materials?.length ? data.materials : ["Cotton", "Leather"];
-        const brands = data.brands?.length ? data.brands : ["BrandA", "BrandB"];
-        const genders = data.genders?.length ? data.genders : ["Male", "Female"];
+      const { data } = await axios.get(
+        `${API_BASE_URL}/api/products/filters?${query.toString()}`
+      );
 
-        setFilterOptions({ categories, sizes, materials, brands, genders });
-        setLoadingFilters(false);
-      } catch (err) {
-        console.warn("Failed to fetch filters, using fallback.", err.message);
-        if (isMounted) {
-          setFilterOptions({
-            categories: ["Shirts", "Pants", "Shoes"],
-            sizes: ["S", "M", "L", "XL"],
-            materials: ["Cotton", "Leather"],
-            brands: ["BrandA", "BrandB"],
-            genders: ["Male", "Female"],
-          });
-          setLoadingFilters(false);
-        }
-      }
-    };
-
-    if (
-      !filterOptions.categories.length &&
-      !filterOptions.sizes.length &&
-      !filterOptions.materials.length &&
-      !filterOptions.brands.length &&
-      !filterOptions.genders.length
-    ) {
-      fetchFilters();
+      setFilterOptions({
+        categories: data.categories || [],
+        sizes: data.sizes || [],
+        materials: data.materials || [],
+        brands: data.brands || [],
+        genders: data.genders || [],
+      });
+    } catch (err) {
+      console.warn("Failed to fetch filters:", err.message);
+    } finally {
+      setLoadingFilters(false);
     }
+  };
 
-    return () => {
-      isMounted = false;
-    };
-  }, [API_BASE_URL, filterOptions]);
-
-  // 🔹 Parse URL params
+  // 🔹 On mount → set filters from URL & fetch options
   useEffect(() => {
     const params = Object.fromEntries([...searchParams]);
     const parsed = {
@@ -97,6 +83,7 @@ function Filtersidebar() {
     };
     setFiltersState(parsed);
     dispatch(setFilters(parsed));
+    fetchFilters(parsed);
   }, [searchParams]);
 
   // 🔹 Handle filter change
@@ -108,13 +95,15 @@ function Filtersidebar() {
       if (checked) updated[name] = [...(updated[name] || []), value];
       else updated[name] = updated[name].filter((v) => v !== value);
     } else if (type === "radio" || type === "number" || type === "range") {
-      updated[name] = type === "number" || type === "range" ? Number(value) : value;
+      updated[name] =
+        type === "number" || type === "range" ? Number(value) : value;
     } else {
       updated[name] = value;
     }
 
     setFiltersState(updated);
     updateURLParams(updated);
+    fetchFilters(updated); // 🔥 refresh filter options dynamically
   };
 
   // 🔹 Update URL params
@@ -135,9 +124,9 @@ function Filtersidebar() {
     setSearchParams({});
     navigate("?");
     dispatch(setFilters(defaultFilters));
+    fetchFilters(defaultFilters);
   };
 
-  // 🔹 Show Skeleton when loading
   if (loadingFilters) {
     return (
       <div className="p-4 space-y-6">
@@ -168,7 +157,9 @@ function Filtersidebar() {
       {/* Category */}
       {filterOptions.categories.length > 0 && (
         <div className="mb-6">
-          <label className="block text-gray-600 font-medium mb-2">Category</label>
+          <label className="block text-gray-600 font-medium mb-2">
+            Category
+          </label>
           {filterOptions.categories.map((c) => (
             <div key={c} className="flex items-center mb-1">
               <input
@@ -228,7 +219,9 @@ function Filtersidebar() {
       {/* Material */}
       {filterOptions.materials.length > 0 && (
         <div className="mb-6">
-          <label className="block text-gray-600 font-medium mb-2">Material</label>
+          <label className="block text-gray-600 font-medium mb-2">
+            Material
+          </label>
           {filterOptions.materials.map((m) => (
             <div key={m} className="flex items-center mb-1">
               <input
@@ -264,44 +257,6 @@ function Filtersidebar() {
           ))}
         </div>
       )}
-
-      {/* Price */}
-      <div className="mb-8">
-        <label className="block text-gray-600 font-medium mb-2">Price Range</label>
-        <div className="flex gap-2 mb-2">
-          <input
-            type="number"
-            name="minPrice"
-            min={0}
-            max={filters.maxPrice}
-            value={filters.minPrice}
-            onChange={handleFilterChange}
-            className="w-1/2 p-1 border rounded"
-          />
-          <input
-            type="number"
-            name="maxPrice"
-            min={filters.minPrice}
-            max={200}
-            value={filters.maxPrice}
-            onChange={handleFilterChange}
-            className="w-1/2 p-1 border rounded"
-          />
-        </div>
-        <input
-          type="range"
-          name="maxPrice"
-          min={0}
-          max={200}
-          value={filters.maxPrice}
-          onChange={handleFilterChange}
-          className="w-full"
-        />
-        <div className="flex justify-between text-gray-600 mt-2">
-          <span>${filters.minPrice}</span>
-          <span>${filters.maxPrice}</span>
-        </div>
-      </div>
     </div>
   );
 }
