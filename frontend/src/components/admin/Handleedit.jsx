@@ -270,22 +270,23 @@ function Handleedit() {
 
         <div>
           <h4 className="font-medium mb-2">Images</h4>
-          <div className="flex gap-2 mb-2">
-            <input
-              type="text"
-              placeholder="Image URL"
-              value={newImageUrl}
-              onChange={(e) => setNewImageUrl(e.target.value)}
-              className="border p-2 rounded flex-1"
-            />
-            <button
-              type="button"
-              onClick={handleAddImage}
-              className="bg-green-600 text-white px-4 rounded hover:bg-green-700"
-            >
-              Add URL
-            </button>
-          </div>
+<div className="flex flex-col sm:flex-row gap-2 mb-2">
+  <input
+    type="text"
+    placeholder="Image URL"
+    value={newImageUrl}
+    onChange={(e) => setNewImageUrl(e.target.value)}
+    className="border p-2 rounded flex-1 w-full"
+  />
+  <button
+    type="button"
+    onClick={handleAddImage}
+    className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 w-full sm:w-auto"
+  >
+    Add URL
+  </button>
+</div>
+
 
           <div className="mb-2">
             <input

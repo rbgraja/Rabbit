@@ -42,15 +42,16 @@ function Productmanagement() {
 
   return (
     <div className="relative max-w-7xl mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Product Management</h2>
-        <button
-          onClick={() => navigate("/admin/products/add")}
-          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-        >
-          + Add New Product
-        </button>
-      </div>
+<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
+  <h2 className="text-2xl font-bold">Product Management</h2>
+  <button
+    onClick={() => navigate("/admin/products/add")}
+    className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 w-full sm:w-auto"
+  >
+    + Add New Product
+  </button>
+</div>
+
 
       {/* Delete Confirmation Modal */}
       {pendingDeleteProduct && (
@@ -141,20 +142,23 @@ function Productmanagement() {
                       </span>
                     )}
                   </td>
-                  <td className="py-3 px-4 space-x-2">
-                    <button
-                      className="px-3 py-1 text-white bg-blue-500 hover:bg-blue-600 rounded"
-                      onClick={() => handleEdit(product)}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      className="px-3 py-1 text-white bg-red hover:bg-red rounded"
-                      onClick={() => setPendingDeleteProduct(product)}
-                    >
-                      Delete
-                    </button>
-                  </td>
+<td className="py-3 px-4">
+  <div className="flex flex-col sm:flex-row gap-2">
+    <button
+      className="px-3 py-1 text-white bg-blue-500 hover:bg-blue-600 rounded w-full sm:w-auto"
+      onClick={() => handleEdit(product)}
+    >
+      Edit
+    </button>
+    <button
+      className="px-3 py-1 text-white bg-red hover:bg-red rounded w-full sm:w-auto"
+      onClick={() => setPendingDeleteProduct(product)}
+    >
+      Delete
+    </button>
+  </div>
+</td>
+
                 </tr>
               ))
             )}

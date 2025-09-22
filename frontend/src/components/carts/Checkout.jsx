@@ -218,29 +218,35 @@ function Checkout() {
           </div>
         ) : (
           <>
-            <div className="border-t py-4 mb-4">
-              {cartItems?.map((product, index) => (
-                <div
-                  key={index}
-                  className="flex items-start justify-between py-2 border-b"
-                >
-                  <div className="flex items-start">
-                    <img
-                      src={product?.image}
-                      alt={product?.name}
-                      className="w-20 h-24 object-cover mr-4"
-                    />
-                    <div>
-                      <h3 className="text-md">{product?.name}</h3>
-                      <p className="text-gray-500">Size: {product?.size}</p>
-                      <p className="text-gray-500">Color: {product?.color}</p>
-                      <p className="text-gray-500">Qty: {product?.quantity}</p>
-                    </div>
-                  </div>
-                  <p className="text-xl">${product?.price?.toFixed(2)}</p>
-                </div>
-              ))}
-            </div>
+<div className="border-t py-4 mb-4">
+  {cartItems?.map((product, index) => (
+    <div
+      key={index}
+      className="flex flex-col sm:flex-row sm:items-center sm:justify-between py-4 border-b"
+    >
+      {/* Product Info */}
+      <div className="flex flex-col sm:flex-row sm:items-center">
+        <img
+          src={product?.image}
+          alt={product?.name}
+          className="w-20 h-24 object-cover mb-3 sm:mb-0 sm:mr-4"
+        />
+        <div>
+          <h3 className="text-md font-medium">{product?.name}</h3>
+          <p className="text-gray-500">Size: {product?.size}</p>
+          <p className="text-gray-500">Color: {product?.color}</p>
+          <p className="text-gray-500">Qty: {product?.quantity}</p>
+        </div>
+      </div>
+
+      {/* Price */}
+      <p className="text-lg font-semibold mt-2 sm:mt-0">
+        ${product?.price?.toFixed(2)}
+      </p>
+    </div>
+  ))}
+</div>
+
             <div className="flex justify-between text-lg mb-4">
               <p>Subtotal</p>
               <p>${Number(totalPrice || 0).toLocaleString()}</p>
