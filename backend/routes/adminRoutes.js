@@ -195,47 +195,88 @@ router.post("/upload", protect, authorizeRoles("admin"), upload.single("file"), 
   }
 });
 
-// Create product
+// Create product with Cloudinary image upload
 router.post("/products", protect, authorizeRoles("admin"), upload.array("images"), async (req, res) => {
   try {
     const {
-      name, description, price, stock, sku, brand, sizes, colors,
-      collection, material, gender, isFeatured, isActive, isPublished, category
+      name,
+      description,
+      price,
+      stock,
+      sku,
+      brand,
+      sizes,
+      colors,
+      collection,
+      material,
+      gender,
+      isFeatured,
+      isActive,
+      isPublished,
+      category,
+      imagesAlt, // frontend se bhejna hoga
     } = req.body;
 
+    // Parse sizes and colors safely
+    const sizesArray = sizes
+      ? typeof sizes === "string"
+        ? JSON.parse(sizes)
+        : sizes
+      : [];
+
+    const colorsArray = colors
+      ? typeof colors === "string"
+        ? JSON.parse(colors)
+        : colors
+      : [];
+
+    // Upload images to Cloudinary
     let uploadedImages = [];
     if (req.files?.length) {
-      for (const file of req.files) {
+      for (let i = 0; i < req.files.length; i++) {
+        const file = req.files[i];
+        const altText = Array.isArray(imagesAlt) ? imagesAlt[i] : imagesAlt || file.originalname;
+
         const result = await new Promise((resolve, reject) => {
           const stream = cloudinary.uploader.upload_stream({ folder: "products" }, (err, result) => {
-            if (err) reject(err); else resolve(result);
+            if (err) reject(err);
+            else resolve(result);
           });
           streamifier.createReadStream(file.buffer).pipe(stream);
         });
-        uploadedImages.push({ url: result.secure_url, alt: "" });
+
+        uploadedImages.push({ url: result.secure_url, alt: altText || "" });
       }
     }
 
     const newProduct = new Product({
-      name, description, price, stock, sku, brand,
-      sizes: Array.isArray(sizes) ? sizes : [],
-      colors: Array.isArray(colors) ? colors : [],
-      collection, material,
+      name: name || "Untitled Product",
+      description: description || "",
+      price: Number(price) || 0,
+      stock: Number(stock) || 0,
+      sku: sku || "",
+      brand: brand || "",
+      sizes: sizesArray,
+      colors: colorsArray,
+      collection: collection || "",
+      material: material || "",
       gender: ["Men","Women","Unisex"].includes(gender) ? gender : "Unisex",
       images: uploadedImages,
       isFeatured: !!isFeatured,
       isActive: isActive !== undefined ? isActive : true,
       isPublished: isPublished !== undefined ? isPublished : false,
-      category,
+      category: category || "",
       createdBy: req.user?._id,
     });
 
     await newProduct.save();
     res.status(201).json({ success: true, product: newProduct });
   } catch (err) {
+    console.error("Create product error:", err);
     res.status(500).json({ message: "Failed to create product", error: err.message });
   }
 });
+
 
 // Update product
 router.put("/products/:id", protect, authorizeRoles("admin"), upload.array("images"), async (req, res) => {

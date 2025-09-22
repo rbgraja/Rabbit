@@ -39,17 +39,17 @@ function ProductDetail({ productId: propProductId }) {
   useEffect(() => {
     if (!selectedProduct) return;
 
-    if (selectedProduct.images?.length > 0) setMainImage(selectedProduct.images[0].url);
-
-    // Normalize colors to { name, hex } with fallback
+    const images = selectedProduct.images || [];
     const normalizedColors = (selectedProduct.colors || selectedProduct.color || []).map(c =>
       typeof c === "string" ? { name: c || "Default", hex: "#ccc" } : { name: c.name || "Default", hex: c.hex || "#ccc" }
     );
-
     setColorOptions(normalizedColors);
-    setSelectedColor(normalizedColors[0] || { name: "Default", hex: "#ccc" });
 
-    // Normalize sizes
+    // Initial color
+    const initialColor = normalizedColors[0] || { name: "Default", hex: "#ccc" };
+    setSelectedColor(initialColor);
+
+    // Sizes
     const normalizedSizes = Array.isArray(selectedProduct.sizes)
       ? selectedProduct.sizes
       : selectedProduct.size
@@ -57,6 +57,10 @@ function ProductDetail({ productId: propProductId }) {
       : ["default"];
     setSizeOptions(normalizedSizes);
     setSelectedSize(normalizedSizes[0] || "default");
+
+    // Main image selection based on alt/color
+    const matchedImage = images.find(img => img.alt?.toLowerCase() === initialColor.name.toLowerCase());
+    setMainImage(matchedImage?.url || images[0]?.url || "/fallback.jpg");
   }, [selectedProduct]);
 
   const handleQuantityChange = (type) => {
@@ -71,55 +75,53 @@ function ProductDetail({ productId: propProductId }) {
     });
   };
 
-const handleAddToCart = () => {
-  if (!selectedColor || !selectedColor.name || !selectedSize) {
-    toast.error("Please select a size and color");
-    return;
-  }
+  const handleAddToCart = () => {
+    if (!selectedColor || !selectedColor.name || !selectedSize) {
+      toast.error("Please select a size and color");
+      return;
+    }
 
-  if (quantity > selectedProduct?.stock) {
-    toast.error(`You can only add up to ${selectedProduct?.stock} items`);
-    return;
-  }
+    if (quantity > selectedProduct?.stock) {
+      toast.error(`You can only add up to ${selectedProduct?.stock} items`);
+      return;
+    }
 
-  setIsButtonDisabled(true);
+    setIsButtonDisabled(true);
 
-  const cartItem = {
-    productId,
-    quantity,
-    size: selectedSize?.trim().toLowerCase() || "default",
-    color: {
-      name: selectedColor?.name?.trim() || "Default",
-      hex: selectedColor?.hex || "#ccc",
-    },
-    guestId,
-    userId: user?._id,
+    const cartItem = {
+      productId,
+      quantity,
+      size: selectedSize?.trim().toLowerCase() || "default",
+      color: {
+        name: selectedColor?.name?.trim() || "Default",
+        hex: selectedColor?.hex || "#ccc",
+      },
+      guestId,
+      userId: user?._id,
+    };
+
+    console.group("🛒 Product about to be added to cart");
+    console.log("Product Name:", selectedProduct?.name);
+    console.log("Product ID:", cartItem.productId);
+    console.log("Selected Size:", cartItem.size);
+    console.log("Selected Color:", cartItem.color);
+    console.log("Quantity:", cartItem.quantity);
+    console.log("Price per unit:", selectedProduct?.price);
+    console.log("Available Stock:", selectedProduct?.stock);
+    console.groupEnd();
+
+    dispatch(addToCartAsync(cartItem))
+      .unwrap()
+      .then((response) => {
+        toast.success("Product added to cart!");
+        console.log("✅ Backend response:", response);
+      })
+      .catch((err) => {
+        toast.error("Failed to add product to cart");
+        console.error("❌ Add to cart error:", err);
+      })
+      .finally(() => setIsButtonDisabled(false));
   };
-
-  // 🔹 Display selected product info before adding to cart
-  console.group("🛒 Product about to be added to cart");
-  console.log("Product Name:", selectedProduct?.name);
-  console.log("Product ID:", cartItem.productId);
-  console.log("Selected Size:", cartItem.size);
-  console.log("Selected Color:", cartItem.color);
-  console.log("Quantity:", cartItem.quantity);
-  console.log("Price per unit:", selectedProduct?.price);
-  console.log("Available Stock:", selectedProduct?.stock);
-  console.groupEnd();
-
-  dispatch(addToCartAsync(cartItem))
-    .unwrap()
-    .then((response) => {
-      toast.success("Product added to cart!");
-      console.log("✅ Backend response:", response);
-    })
-    .catch((err) => {
-      toast.error("Failed to add product to cart");
-      console.error("❌ Add to cart error:", err);
-    })
-    .finally(() => setIsButtonDisabled(false));
-};
-
 
   if (loading) {
     return (
@@ -136,26 +138,29 @@ const handleAddToCart = () => {
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="max-w-6xl mx-auto bg-white p-8 rounded-xl shadow-md">
         <div className="flex flex-col md:flex-row gap-10">
-          {/* Thumbnails */}
-          <div className="hidden md:flex flex-col space-y-4">
-            {selectedProduct.images?.map((img, idx) => (
-              <img
-                key={idx}
-                src={img?.url || "/fallback.jpg"}
-                alt={`thumb-${idx}`}
-                onClick={() => setMainImage(img?.url)}
-                className={`w-20 h-20 object-cover rounded-md cursor-pointer border transition ${
-                  mainImage === img?.url ? "border-black scale-105" : "border-gray-300 hover:border-black"
-                }`}
-              />
-            ))}
-          </div>
+{/* Thumbnails */}
+<div className="hidden md:flex flex-col space-y-4">
+  {selectedProduct.images
+    ?.filter(img => !img.alt || img.alt.toLowerCase() === selectedColor.name.toLowerCase())
+    .map((img, idx) => (
+      <img
+        key={idx}
+        src={img?.url || "/fallback.jpg"}
+        alt={img?.alt || `thumb-${idx}`}
+        onClick={() => setMainImage(img?.url)}
+        className={`w-20 h-20 object-cover rounded-md cursor-pointer border transition ${
+          mainImage === img?.url ? "border-black scale-105" : "border-gray-300 hover:border-black"
+        }`}
+      />
+  ))}
+</div>
+
 
           {/* Main Image */}
           <div className="md:w-1/2">
             <img
               src={mainImage || "/fallback.jpg"}
-              alt="main"
+              alt={selectedColor?.name || "main"}
               className="w-full h-[500px] object-cover rounded-lg shadow"
             />
           </div>
@@ -167,36 +172,41 @@ const handleAddToCart = () => {
             <p className="text-gray-600">{selectedProduct.description}</p>
             <p className="text-sm text-gray-500">Stock: {selectedProduct?.stock ?? "N/A"}</p>
 
-{/* Color */}
-{colorOptions.length > 0 && (
-  <div className="mt-4">
-    <p className="text-sm font-medium text-gray-700 mb-2">Color:</p>
-    <div className="flex flex-wrap gap-4 items-center">
-      {colorOptions.map((color, idx) => (
-        <div key={idx} className="flex flex-col items-center">
-          <button
-            onClick={() => setSelectedColor(color)}
-            className={`w-10 h-10 rounded-full border-2 transition-transform duration-150 ${
-              selectedColor?.name === color.name
-                ? "border-black scale-110"
-                : "border-gray-300 hover:border-black"
-            }`}
-            style={{ backgroundColor: color.hex || "#ccc" }}
-            title={color.name}
-          />
-          <span
-            className={`mt-1 text-xs font-medium transition-colors duration-150 ${
-              selectedColor?.name === color.name ? "text-black" : "text-gray-500"
-            }`}
-          >
-            {color.name}
-          </span>
-        </div>
-      ))}
-    </div>
-  </div>
-)}
-
+            {/* Color */}
+            {colorOptions.length > 0 && (
+              <div className="mt-4">
+                <p className="text-sm font-medium text-gray-700 mb-2">Color:</p>
+                <div className="flex flex-wrap gap-4 items-center">
+                  {colorOptions.map((color, idx) => (
+                    <div key={idx} className="flex flex-col items-center">
+                      <button
+                        onClick={() => {
+                          setSelectedColor(color);
+                          const matchedImg = selectedProduct.images?.find(
+                            img => img.alt?.toLowerCase() === color.name.toLowerCase()
+                          );
+                          setMainImage(matchedImg?.url || selectedProduct.images[0]?.url || "/fallback.jpg");
+                        }}
+                        className={`w-10 h-10 rounded-full border-2 transition-transform duration-150 ${
+                          selectedColor?.name === color.name
+                            ? "border-black scale-110"
+                            : "border-gray-300 hover:border-black"
+                        }`}
+                        style={{ backgroundColor: color.hex || "#ccc" }}
+                        title={color.name}
+                      />
+                      <span
+                        className={`mt-1 text-xs font-medium transition-colors duration-150 ${
+                          selectedColor?.name === color.name ? "text-black" : "text-gray-500"
+                        }`}
+                      >
+                        {color.name}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Size */}
             {sizeOptions.length > 0 && (

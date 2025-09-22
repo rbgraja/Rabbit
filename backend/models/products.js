@@ -74,6 +74,7 @@ const productSchema = new mongoose.Schema(
         alt: {
           type: String,
           default: "",
+          required: true,
         },
       },
     ],
