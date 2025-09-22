@@ -1,8 +1,30 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
+import namer from "color-namer";
 
-// ✅ Local Skeleton (reusable, same as other pages)
+// ✅ Local Skeleton
 function Skeleton({ className = "" }) {
   return <div className={`animate-pulse rounded-md bg-gray-200 ${className}`} />;
+}
+
+// 🔹 Format color object to friendly name
+function formatColor(color) {
+  if (!color) return "";
+
+  // If color is object { name, hex }
+  if (typeof color === "object") {
+    return color.name || "Default";
+  }
+
+  // If string hex/rgb
+  try {
+    if (color.startsWith("#") || color.startsWith("rgb")) {
+      const result = namer(color);
+      return result.basic[0].name;
+    }
+    return color.charAt(0).toUpperCase() + color.slice(1).toLowerCase();
+  } catch {
+    return color;
+  }
 }
 
 function Orderconfirmationpage() {
@@ -13,61 +35,21 @@ function Orderconfirmationpage() {
     const storedOrder = localStorage.getItem("lastOrder");
     if (storedOrder) {
       const parsed = JSON.parse(storedOrder);
-      setCheckout(parsed?.order);
+      setCheckout(parsed?.order || parsed); // support for different structures
     }
     setLoading(false);
   }, []);
 
   const calculateEstimatedDelivery = (createdAt) => {
     const orderDate = new Date(createdAt);
-    orderDate.setDate(orderDate.getDate() + 10);
+    orderDate.setDate(orderDate.getDate() + 10); // 10 days estimate
     return orderDate.toLocaleDateString();
   };
 
   if (loading) {
     return (
       <div className="max-w-4xl mx-auto p-4 sm:p-6">
-        <h1 className="text-2xl sm:text-4xl font-bold text-center text-emerald-700 mb-6 sm:mb-8">
-          <Skeleton className="h-10 w-2/3 mx-auto" />
-        </h1>
-
-        <div className="p-4 sm:p-6 rounded-lg border space-y-6">
-          <div className="flex flex-col sm:flex-row sm:justify-between gap-4">
-            <div className="space-y-2">
-              <Skeleton className="h-6 w-40" />
-              <Skeleton className="h-4 w-32" />
-            </div>
-            <Skeleton className="h-4 w-32" />
-          </div>
-
-          <div className="space-y-4">
-            {Array.from({ length: 3 }).map((_, idx) => (
-              <div key={idx} className="flex items-center gap-4">
-                <Skeleton className="w-16 h-16" />
-                <div className="flex-1 space-y-2">
-                  <Skeleton className="h-4 w-32" />
-                  <Skeleton className="h-3 w-24" />
-                </div>
-                <div className="text-right space-y-2">
-                  <Skeleton className="h-4 w-16" />
-                  <Skeleton className="h-3 w-12" />
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <Skeleton className="h-5 w-20" />
-              <Skeleton className="h-4 w-32" />
-            </div>
-            <div className="space-y-2">
-              <Skeleton className="h-5 w-20" />
-              <Skeleton className="h-4 w-40" />
-              <Skeleton className="h-4 w-28" />
-            </div>
-          </div>
-        </div>
+        <Skeleton className="h-10 w-2/3 mx-auto" />
       </div>
     );
   }
@@ -90,10 +72,9 @@ function Orderconfirmationpage() {
               Order ID: {checkout._id}
             </h2>
             <p className="text-gray-500 text-sm sm:text-base">
-              Order Date: {new Date(checkout.createdAt).toLocaleTimeString()}
+              Order Date: {new Date(checkout.createdAt).toLocaleString()}
             </p>
           </div>
-
           <div>
             <p className="text-emerald-700 text-sm sm:text-base">
               Estimated Delivery: {calculateEstimatedDelivery(checkout.createdAt)}
@@ -101,7 +82,7 @@ function Orderconfirmationpage() {
           </div>
         </div>
 
-        {/* Order Items List */}
+        {/* Order Items */}
         <div className="mb-10 sm:mb-20 space-y-4">
           {checkout.orderItems?.map((item, index) => (
             <div
@@ -116,7 +97,7 @@ function Orderconfirmationpage() {
               <div className="flex-1">
                 <h4 className="text-md font-semibold">{item.name}</h4>
                 <p className="text-sm text-gray-500">
-                  {item.color} | {item.size}
+                  {formatColor(item.color)} | {item.size}
                 </p>
               </div>
               <div className="text-left sm:text-right">
@@ -127,13 +108,11 @@ function Orderconfirmationpage() {
           ))}
         </div>
 
-        {/* Shipping & Payment Info */}
+        {/* Shipping & Payment */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
           <div>
             <h4 className="text-md sm:text-lg font-semibold mb-2">Payment</h4>
-            <p className="text-gray-600 text-sm sm:text-base">
-              Cash on Delivery
-            </p>
+            <p className="text-gray-600 text-sm sm:text-base">Cash on Delivery</p>
           </div>
           <div>
             <h4 className="text-md sm:text-lg font-semibold mb-2">Delivery</h4>

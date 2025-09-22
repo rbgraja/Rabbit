@@ -1,6 +1,23 @@
 // 🛠 Import mongoose for schema/model creation
 const mongoose = require("mongoose");
 
+// 🎨 Subschema for colors
+const colorSchema = new mongoose.Schema(
+  {
+    hex: {
+      type: String,
+      required: [true, "Please provide color hex code"], // e.g., #FFFFFF
+      trim: true,
+    },
+    name: {
+      type: String, // e.g., White, Red
+      trim: true,
+      default: "",
+    },
+  },
+  { _id: false } // we don’t need separate _id for each color
+);
+
 // 🧱 Define the Product schema
 const productSchema = new mongoose.Schema(
   {
@@ -74,9 +91,9 @@ const productSchema = new mongoose.Schema(
       trim: true,
     },
 
-    // 🎨 Product color
+    // 🎨 Product colors (array of objects now)
     colors: {
-      type: [String],
+      type: [colorSchema],
       default: [],
     },
 

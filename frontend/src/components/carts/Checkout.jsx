@@ -3,11 +3,33 @@ import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import axios from 'axios';
 import { clearCartState } from '../../redux/slices/cartSlice';
+import namer from "color-namer";
 
-// ✅ Simple Skeleton Component (direct yahi file me use karenge)
+// ✅ Skeleton Loader
 const Skeleton = ({ className }) => (
   <div className={`animate-pulse bg-gray-200 rounded ${className}`} />
 );
+
+// 🔹 Format color object to friendly name
+function formatColor(color) {
+  if (!color) return "";
+
+  // If color is object { name, hex }
+  if (typeof color === "object") {
+    return color.name || "Default";
+  }
+
+  // If string hex/rgb
+  try {
+    if (color.startsWith("#") || color.startsWith("rgb")) {
+      const result = namer(color);
+      return result.basic[0].name;
+    }
+    return color.charAt(0).toUpperCase() + color.slice(1).toLowerCase();
+  } catch {
+    return color;
+  }
+}
 
 function Checkout() {
   const navigate = useNavigate();
@@ -46,6 +68,7 @@ function Checkout() {
         return navigate("/login");
       }
 
+      // Map cart items for order
       const orderData = {
         orderItems: cartItems.map((item) => ({
           productId: item.productId,
@@ -54,7 +77,7 @@ function Checkout() {
           price: item.price,
           quantity: item.quantity,
           size: item.size,
-          color: item.color,
+          color: item.color, // send full color object {name, hex}
         })),
         shippingAddress,
         paymentmethod: 'Cash on Delivery',
@@ -64,11 +87,7 @@ function Checkout() {
       const res = await axios.post(
         `${import.meta.env.VITE_BACKGROUND_URL}/api/orders`,
         orderData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
       const orderResponse = {
@@ -218,34 +237,34 @@ function Checkout() {
           </div>
         ) : (
           <>
-<div className="border-t py-4 mb-4">
-  {cartItems?.map((product, index) => (
-    <div
-      key={index}
-      className="flex flex-col sm:flex-row sm:items-center sm:justify-between py-4 border-b"
-    >
-      {/* Product Info */}
-      <div className="flex flex-col sm:flex-row sm:items-center">
-        <img
-          src={product?.image}
-          alt={product?.name}
-          className="w-20 h-24 object-cover mb-3 sm:mb-0 sm:mr-4"
-        />
-        <div>
-          <h3 className="text-md font-medium">{product?.name}</h3>
-          <p className="text-gray-500">Size: {product?.size}</p>
-          <p className="text-gray-500">Color: {product?.color}</p>
-          <p className="text-gray-500">Qty: {product?.quantity}</p>
-        </div>
-      </div>
+            <div className="border-t py-4 mb-4">
+              {cartItems?.map((product, index) => (
+                <div
+                  key={index}
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between py-4 border-b"
+                >
+                  {/* Product Info */}
+                  <div className="flex flex-col sm:flex-row sm:items-center">
+                    <img
+                      src={product?.image}
+                      alt={product?.name}
+                      className="w-20 h-24 object-cover mb-3 sm:mb-0 sm:mr-4"
+                    />
+                    <div>
+                      <h3 className="text-md font-medium">{product?.name}</h3>
+                      <p className="text-gray-500">Size: {product?.size}</p>
+                      <p className="text-gray-500">Color: {formatColor(product?.color)}</p>
+                      <p className="text-gray-500">Qty: {product?.quantity}</p>
+                    </div>
+                  </div>
 
-      {/* Price */}
-      <p className="text-lg font-semibold mt-2 sm:mt-0">
-        ${product?.price?.toFixed(2)}
-      </p>
-    </div>
-  ))}
-</div>
+                  {/* Price */}
+                  <p className="text-lg font-semibold mt-2 sm:mt-0">
+                    ${product?.price?.toFixed(2)}
+                  </p>
+                </div>
+              ))}
+            </div>
 
             <div className="flex justify-between text-lg mb-4">
               <p>Subtotal</p>

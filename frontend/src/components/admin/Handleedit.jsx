@@ -1,3 +1,4 @@
+// src/pages/admin/Handleedit.jsx
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
@@ -17,12 +18,14 @@ function Handleedit() {
   const { id } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { productDetail, loading, error } =
-    useSelector((state) => state.adminProduct) || {
-      productDetail: null,
-      loading: false,
-      error: null,
-    };
+
+  // ✅ Safe selector (no crash if slice missing)
+  const adminProductState = useSelector((state) => state.adminProduct) || {};
+  const {
+    productDetail = null,
+    loading = false,
+    error = null,
+  } = adminProductState;
 
   const fallbackProduct = {
     name: "",
@@ -33,7 +36,7 @@ function Handleedit() {
     category: "",
     brand: "",
     sizes: [],
-    colors: [],
+    colors: [], // ✅ array of { hex, name }
     collection: "",
     material: "",
     gender: "Unisex",
@@ -62,11 +65,14 @@ function Handleedit() {
           : String(productDetail.sizes || "")
               .split(",")
               .map((v) => v.trim()),
+
+        // ✅ Ensure colors always in [{ hex, name }] format
         colors: Array.isArray(productDetail.colors)
-          ? productDetail.colors
-          : String(productDetail.color || "")
-              .split(",")
-              .map((v) => v.trim()),
+          ? productDetail.colors.map((c) =>
+              typeof c === "string" ? { hex: c, name: "" } : c
+            )
+          : [],
+
         gender: ["Men", "Women", "Unisex"].includes(productDetail.gender)
           ? productDetail.gender
           : "Unisex",
@@ -84,14 +90,37 @@ function Handleedit() {
     const { name, value } = e.target;
     if (name === "price" || name === "stock") {
       setProductData({ ...productData, [name]: Number(value) });
-    } else if (name === "sizes" || name === "colors") {
+    } else if (name === "sizes") {
       setProductData({
         ...productData,
-        [name]: value.split(",").map((v) => v.trim()),
+        sizes: value.split(",").map((v) => v.trim()),
       });
     } else {
       setProductData({ ...productData, [name]: value });
     }
+  };
+
+  // ✅ Handle colors as array of { hex, name }
+  const handleColorChange = (index, key, value) => {
+    setProductData((prev) => {
+      const newColors = [...prev.colors];
+      newColors[index] = { ...newColors[index], [key]: value };
+      return { ...prev, colors: newColors };
+    });
+  };
+
+  const handleAddColor = () => {
+    setProductData((prev) => ({
+      ...prev,
+      colors: [...prev.colors, { hex: "", name: "" }],
+    }));
+  };
+
+  const handleRemoveColor = (index) => {
+    setProductData((prev) => ({
+      ...prev,
+      colors: prev.colors.filter((_, i) => i !== index),
+    }));
   };
 
   const handleAddImage = () => {
@@ -178,23 +207,6 @@ function Handleedit() {
             </div>
           ))}
         </div>
-        <div className="mt-4">
-          <Skeleton height={20} width="30%" className="mb-2" />
-          <Skeleton height={100} />
-        </div>
-        <div className="mt-4">
-          <Skeleton height={20} width="30%" className="mb-2" />
-          <div className="flex gap-2">
-            {[...Array(3)].map((_, i) => (
-              <Skeleton key={i} height={96} width={96} />
-            ))}
-          </div>
-        </div>
-        <Skeleton
-          height={40}
-          width={160}
-          className="mt-6 rounded bg-gray-300"
-        />
       </div>
     );
   }
@@ -222,7 +234,6 @@ function Handleedit() {
             "collection",
             "material",
             "sizes",
-            "colors",
           ].map((field) => (
             <div key={field}>
               <label className="block font-medium mb-1">
@@ -242,6 +253,7 @@ function Handleedit() {
             </div>
           ))}
 
+          {/* Gender dropdown */}
           <div>
             <label className="block font-medium mb-1">Gender</label>
             <select
@@ -257,6 +269,47 @@ function Handleedit() {
           </div>
         </div>
 
+        {/* Colors Section */}
+        <div>
+          <h4 className="font-medium mb-2">Colors</h4>
+          {productData.colors.map((color, index) => (
+            <div key={index} className="flex gap-2 mb-2 items-center">
+              <input
+                type="color"
+                value={color.hex}
+                onChange={(e) =>
+                  handleColorChange(index, "hex", e.target.value)
+                }
+                className="w-12 h-10 border rounded"
+              />
+              <input
+                type="text"
+                placeholder="Color name (optional)"
+                value={color.name}
+                onChange={(e) =>
+                  handleColorChange(index, "name", e.target.value)
+                }
+                className="border p-2 rounded flex-1"
+              />
+              <button
+                type="button"
+                onClick={() => handleRemoveColor(index)}
+                className="bg-red-600 text-white px-2 py-1 rounded"
+              >
+                ❌
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={handleAddColor}
+            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+          >
+            ➕ Add Color
+          </button>
+        </div>
+
+        {/* Description */}
         <div>
           <label className="block font-medium mb-1">Description</label>
           <textarea
@@ -268,25 +321,25 @@ function Handleedit() {
           />
         </div>
 
+        {/* Images */}
         <div>
           <h4 className="font-medium mb-2">Images</h4>
-<div className="flex flex-col sm:flex-row gap-2 mb-2">
-  <input
-    type="text"
-    placeholder="Image URL"
-    value={newImageUrl}
-    onChange={(e) => setNewImageUrl(e.target.value)}
-    className="border p-2 rounded flex-1 w-full"
-  />
-  <button
-    type="button"
-    onClick={handleAddImage}
-    className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 w-full sm:w-auto"
-  >
-    Add URL
-  </button>
-</div>
-
+          <div className="flex flex-col sm:flex-row gap-2 mb-2">
+            <input
+              type="text"
+              placeholder="Image URL"
+              value={newImageUrl}
+              onChange={(e) => setNewImageUrl(e.target.value)}
+              className="border p-2 rounded flex-1"
+            />
+            <button
+              type="button"
+              onClick={handleAddImage}
+              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+            >
+              Add URL
+            </button>
+          </div>
 
           <div className="mb-2">
             <input

@@ -13,7 +13,10 @@ const orderItemSchema = new mongoose.Schema({
   price: { type: Number, required: true }, // 💵 Price at the time of order
   quantity: { type: Number, required: true }, // 🔢 Ordered quantity
   size: { type: String }, // 📏 Optional: Size (if applicable)
-  color: { type: String }, // 🎨 Optional: Color (if applicable)
+   color: {
+    name: { type: String, required: true, trim: true },
+    hex: { type: String, default: "#ccc" },
+  }, // 🎨 Optional: Color (if applicable)
 });
 
 // 📦 Main order schema

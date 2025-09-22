@@ -1,9 +1,16 @@
-// App.jsx
 import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { Provider, useDispatch } from "react-redux";
+import { useEffect } from "react";
+
+import store from "./redux/store";
+import { fetchCart, setCartFromStorage } from "./redux/slices/cartSlice";
+import { syncAuthFromStorage } from "./redux/slices/authSlice";
+
 import Userlayout from "./components/layout/userlayout";
 import ErrorBoundary from "./components/ErrorBoundary";
+import AdminRoute from "./components/AdminRoute";
+
 import Home from "./pages/Home";
-import { Toaster } from "sonner";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Profile from "./pages/Profile";
@@ -19,28 +26,43 @@ import Usermanagement from "./components/admin/Usermanagement";
 import Productmanagement from "./components/admin/Productmanagement";
 import Handleedit from "./components/admin/Handleedit";
 import OrderManagement from "./components/admin/Ordermanagement";
-import { Provider, useDispatch } from "react-redux";
-import store from "./redux/store";
-import { fetchCart } from "./redux/slices/cartSlice";
-import { useEffect } from "react";
-import AdminRoute from "./components/AdminRoute";
-import { syncAuthFromStorage } from "./redux/slices/authSlice";
-// ✅ Proper wrapper to hook Redux + Router together
+import { Toaster } from "sonner";
+
 function AppContent() {
   const dispatch = useDispatch();
 
-  useEffect(() => {
-      dispatch(syncAuthFromStorage()); 
-    try {
-      const user = JSON.parse(localStorage.getItem("user"));
-      if (user && user._id) {
-        console.log("🛒 Fetching cart for:", user._id);
-        dispatch(fetchCart({ userId: user._id }));
-      }
-    } catch (err) {
-      console.error("Failed to fetch user on reload", err);
+useEffect(() => {
+  dispatch(syncAuthFromStorage());
+
+  try {
+    const user = JSON.parse(localStorage.getItem("user"));
+    const storedCart = JSON.parse(localStorage.getItem("cart"));
+
+    // 1️⃣ LocalStorage me agar cart items hain → set Redux state
+    if (storedCart?.cartItems?.length > 0) {
+      dispatch(setCartFromStorage(storedCart));
     }
-  }, []);
+
+    // 2️⃣ Agar user logged in → server fetch
+    if (user && user._id) {
+      dispatch(fetchCart({ userId: user._id }))
+        .unwrap()
+        .then((serverCart) => {
+          // server cart me items hain → Redux state update
+          if (serverCart?.products?.length > 0) {
+            dispatch(setCartFromStorage(serverCart));
+          } 
+          // agar server cart empty hai → Redux state localStorage se already hydrated hai
+        })
+        .catch(() => {
+          console.warn("Server cart fetch failed, using localStorage cart if available");
+        });
+    }
+  } catch (err) {
+    console.error("Failed to fetch user/cart on reload:", err);
+  }
+}, [dispatch]);
+
 
   return (
     <>
@@ -59,21 +81,29 @@ function AppContent() {
           <Route path="my-order" element={<Myorder />} />
         </Route>
 
-        <Route path="/admin" element={    <AdminRoute><ErrorBoundary><Adminlayout /></ErrorBoundary></AdminRoute>}>
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute>
+              <ErrorBoundary>
+                <Adminlayout />
+              </ErrorBoundary>
+            </AdminRoute>
+          }
+        >
           <Route index element={<Adminhomepage />} />
           <Route path="users" element={<Usermanagement />} />
           <Route path="products" element={<Productmanagement />} />
           <Route path="products/:id/edit" element={<Handleedit />} />
           <Route path="orders" element={<OrderManagement />} />
-           <Route path="orders/:id" element={<OrderDetailpage />} />
-           <Route path="/admin/products/add" element={<Handleedit />} />
+          <Route path="orders/:id" element={<OrderDetailpage />} />
+          <Route path="/admin/products/add" element={<Handleedit />} />
         </Route>
       </Routes>
     </>
   );
 }
 
-// Final export
 export default function App() {
   return (
     <Provider store={store}>
