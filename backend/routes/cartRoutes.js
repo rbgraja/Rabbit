@@ -68,7 +68,7 @@ router.post("/", protect, async (req, res) => {
     );
 
     if (existingItem) existingItem.quantity += qty;
-    else cart.products.push({ productId: product._id, name: product.name, image: product.images?.[0]?.url || "", price: product.price, size: normalizedSize, color: safeColor, quantity: qty });
+    else cart.products.push({ productId: product._id, name: product.name, image: req.body.image || product.images?.[0]?.url || "", price: product.price, size: normalizedSize, color: safeColor, quantity: qty });
 
     cart.totalPrice = calculateTotal(cart.products);
     await cart.save();

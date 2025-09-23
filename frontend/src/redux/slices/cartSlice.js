@@ -95,6 +95,7 @@ export const addToCartAsync = createAsyncThunk(
         size: normalize(item.size),
         color: formatColor(item.color),
         quantity: item.quantity || 1,
+        image: item.image || "", // ✅ include image from frontend
       };
       const res = await axios.post(`${BASE_URL}/api/cart`, payload, { headers: getAuthHeaders() });
       return res.data;

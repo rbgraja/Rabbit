@@ -43,7 +43,7 @@ export const getAdminProductById = createAsyncThunk(
   }
 );
 
-// Create product
+// Create product (updated like updateProduct)
 export const createProduct = createAsyncThunk(
   "adminProducts/create",
   async (productData, { rejectWithValue, getState }) => {
@@ -51,21 +51,40 @@ export const createProduct = createAsyncThunk(
       const token = getToken(getState);
       if (!token) throw new Error("Not authenticated");
 
-      // Ensure images are in proper format for backend
-      const payload = {
-        ...productData,
-        images: productData.images.map((img) => ({ url: img.url, alt: img.alt || "" })),
-      };
+      const formData = new FormData();
 
-      const res = await axios.post(`${BASE_URL}/api/admin/products`, payload, {
-        headers: { Authorization: `Bearer ${token}` },
+      // Append normal fields
+      for (const key in productData) {
+        if (key === "images") continue; // files separately
+        const value = productData[key];
+        formData.append(key, Array.isArray(value) ? JSON.stringify(value) : value);
+      }
+
+      // Append images files if exist
+      if (productData.images && productData.images.length) {
+        productData.images.forEach((img) => {
+          if (img.file) formData.append("images", img.file); // file object
+          else if (img.url) formData.append("images", img.url); // optional fallback
+        });
+      }
+
+      const res = await axios.post(`${BASE_URL}/api/admin/products`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
       });
+
       return res.data.product;
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || err.message);
     }
   }
 );
+
+
+
+
 
 // Update product
 export const updateProduct = createAsyncThunk(
