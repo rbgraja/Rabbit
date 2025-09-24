@@ -37,7 +37,27 @@ function Productsgrid({ products, loading = false, error = null }) {
               />
             </div>
             <h3 className="text-sm mb-2">{product.name}</h3>
-            <p className="text-gray-500 font-medium text-sm">${product.price}</p>
+            {/* Price */}
+{product.discount > 0 ? (
+  <div className="flex items-center space-x-2">
+    <span className="text-red-600 font-semibold text-sm">
+      $
+      {(
+        product.price -
+        (product.price * product.discount) / 100
+      ).toFixed(2)}
+    </span>
+    <span className="line-through text-gray-400 text-xs">
+      ${product.price}
+    </span>
+    <span className="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded">
+      -{product.discount}%
+    </span>
+  </div>
+) : (
+  <p className="text-gray-500 font-medium text-sm">${product.price}</p>
+)}
+
             <p className="text-green-600 font-medium text-sm mt-1">
               Stock: {product.stock ?? 0} available
             </p>

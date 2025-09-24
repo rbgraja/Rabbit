@@ -5,17 +5,27 @@ const { protect } = require("../middleware/auth");
 
 const router = express.Router();
 
-// Calculate total
-const calculateTotal = (products) => products.reduce(
-  (acc, item) => acc + (Number(item.price) * Number(item.quantity) || 0),
-  0
-);
+/** 🧮 Helper: calculate discounted price */
+const getDiscountedPrice = (product) => {
+  if (!product) return 0;
+  const discount = product.discount || 0;
+  const price = product.price || 0;
+  return discount > 0 ? Math.round(price - (price * discount) / 100) : price;
+};
+
+/** 🔢 Calculate total cart price */
+const calculateTotal = (products) =>
+  products.reduce(
+    (acc, item) => acc + (Number(item.price) * Number(item.quantity) || 0),
+    0
+  );
 
 const normalize = (value) => value?.trim().toLowerCase();
 const normalizeColor = (color) => {
   if (!color) return "";
   if (typeof color === "string") return color.trim().toLowerCase();
-  if (typeof color === "object" && color.name) return color.name.trim().toLowerCase();
+  if (typeof color === "object" && color.name)
+    return color.name.trim().toLowerCase();
   return "";
 };
 
@@ -25,8 +35,8 @@ const getCartByUserOrGuestId = async (userId, guestId) => {
   return null;
 };
 
-// GET cart
-router.get("/", async (req, res) => {
+/** 📦 GET cart */
+router.get("/",protect, async (req, res) => {
   const guestId = req.query.guestId;
   const userId = req.user?.id || req.query.userId;
   try {
@@ -38,7 +48,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-// POST cart (add item)
+/** ➕ POST cart (add item) */
 router.post("/", protect, async (req, res) => {
   const { guestId, productId, size, color, quantity } = req.body;
   const userId = req.user?.id || req.query.userId;
@@ -48,17 +58,30 @@ router.post("/", protect, async (req, res) => {
     if (!product) return res.status(404).json({ message: "Product not found" });
 
     let cart = await getCartByUserOrGuestId(userId, guestId);
-    if (!cart) cart = new Cart({ user: userId || null, guestId: userId ? null : guestId || `guest_${Math.random().toString(36).substr(2, 9)}`, products: [] });
+    if (!cart)
+      cart = new Cart({
+        user: userId || null,
+        guestId: userId
+          ? null
+          : guestId || `guest_${Math.random().toString(36).substr(2, 9)}`,
+        products: [],
+      });
 
     const normalizedSize = size?.trim().toLowerCase() || "default";
     let safeColor = { name: "Default", hex: "#ccc" };
     if (color) {
       if (typeof color === "string") safeColor.name = color.trim() || "Default";
-      else if (typeof color === "object") { safeColor.name = color.name?.trim() || "Default"; safeColor.hex = color.hex || "#ccc"; }
+      else if (typeof color === "object") {
+        safeColor.name = color.name?.trim() || "Default";
+        safeColor.hex = color.hex || "#ccc";
+      }
     }
 
     const qty = Number(quantity);
-    if (isNaN(qty) || qty <= 0) return res.status(400).json({ message: "Invalid quantity" });
+    if (isNaN(qty) || qty <= 0)
+      return res.status(400).json({ message: "Invalid quantity" });
+
+    const discountedPrice = getDiscountedPrice(product);
 
     const existingItem = cart.products.find(
       (item) =>
@@ -68,7 +91,16 @@ router.post("/", protect, async (req, res) => {
     );
 
     if (existingItem) existingItem.quantity += qty;
-    else cart.products.push({ productId: product._id, name: product.name, image: req.body.image || product.images?.[0]?.url || "", price: product.price, size: normalizedSize, color: safeColor, quantity: qty });
+    else
+      cart.products.push({
+        productId: product._id,
+        name: product.name,
+        image: req.body.image || product.images?.[0]?.url || "",
+        price: discountedPrice, // ✅ discounted price
+        size: normalizedSize,
+        color: safeColor,
+        quantity: qty,
+      });
 
     cart.totalPrice = calculateTotal(cart.products);
     await cart.save();
@@ -80,7 +112,7 @@ router.post("/", protect, async (req, res) => {
   }
 });
 
-// PUT cart (update quantity)
+/** ✏️ PUT cart (update quantity) */
 router.put("/", protect, async (req, res) => {
   const { guestId, productId, size, color, quantity } = req.body;
   const userId = req.user?.id || req.query.userId;
@@ -99,8 +131,16 @@ router.put("/", protect, async (req, res) => {
 
     const qty = Number(quantity);
     if (isNaN(qty) || qty < 0) return res.status(400).json({ message: "Invalid quantity" });
-    if (qty === 0) cart.products.splice(index, 1);
-    else cart.products[index].quantity = qty;
+
+    if (qty === 0) {
+      cart.products.splice(index, 1);
+    } else {
+      // ✅ re-check discount price
+      const product = await Product.findById(productId);
+      const discountedPrice = getDiscountedPrice(product);
+      cart.products[index].price = discountedPrice;
+      cart.products[index].quantity = qty;
+    }
 
     cart.totalPrice = calculateTotal(cart.products);
     await cart.save();
@@ -111,7 +151,8 @@ router.put("/", protect, async (req, res) => {
   }
 });
 
-// DELETE cart (remove item)
+
+/** ❌ DELETE cart (remove item) */
 router.delete("/", protect, async (req, res) => {
   const { guestId, productId, size, color } = req.body;
   const userId = req.user?.id || req.query.userId;
@@ -136,18 +177,28 @@ router.delete("/", protect, async (req, res) => {
   }
 });
 
-// POST merge guest cart
+/** 🔗 POST merge guest cart */
 router.post("/merge", protect, async (req, res) => {
   try {
     const userId = req.user.id;
     const guestId = req.body.guestId;
-    if (!guestId) return res.status(400).json({ message: "guestId is required" });
+
+    if (!guestId) {
+      return res.status(400).json({ message: "guestId is required" });
+    }
 
     const guestCart = await Cart.findOne({ guestId });
     const userCart = await Cart.findOne({ user: userId });
 
-    if (!guestCart || guestCart.products.length === 0) return res.status(200).json({ message: "Guest cart empty", cart: userCart || { products: [], totalPrice: 0 } });
+    // 🛑 Guest cart empty
+    if (!guestCart || guestCart.products.length === 0) {
+      return res.status(200).json({
+        message: "Guest cart empty",
+        cart: userCart || { products: [], totalPrice: 0 },
+      });
+    }
 
+    // 👤 Agar user ka cart nahi hai → guestCart ko hi userCart bana do
     if (!userCart) {
       guestCart.user = userId;
       guestCart.guestId = null;
@@ -156,19 +207,36 @@ router.post("/merge", protect, async (req, res) => {
       return res.status(200).json({ message: "Cart merged", cart: guestCart });
     }
 
-    guestCart.products.forEach((guestItem) => {
+    // 🔄 Merge guestCart into userCart
+    for (const guestItem of guestCart.products) {
+      const product = await Product.findById(guestItem.productId);
+      if (!product) continue;
+
+      const discountedPrice = getDiscountedPrice(product);
+
       const existingItem = userCart.products.find(
         (item) =>
           item.productId.toString() === guestItem.productId.toString() &&
           normalize(item.size) === normalize(guestItem.size) &&
           normalizeColor(item.color) === normalizeColor(guestItem.color)
       );
-      if (existingItem) existingItem.quantity += guestItem.quantity;
-      else userCart.products.push(guestItem);
-    });
 
+      if (existingItem) {
+        existingItem.quantity += guestItem.quantity;
+        existingItem.price = discountedPrice; // ✅ Always refresh price
+      } else {
+        userCart.products.push({
+          ...guestItem.toObject(), // 🛠 ensure Mongoose doc converted
+          price: discountedPrice,
+        });
+      }
+    }
+
+    // ✅ Recalculate and save
     userCart.totalPrice = calculateTotal(userCart.products);
     await userCart.save();
+
+    // 🗑 Guest cart delete
     await Cart.deleteOne({ guestId });
 
     res.status(200).json({ message: "Cart merged", cart: userCart });

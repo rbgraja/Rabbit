@@ -1,3 +1,4 @@
+// src/redux/slices/productSlice.js
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
 
@@ -14,7 +15,7 @@ const convertSortKey = (key) => {
 };
 
 // 🔍 Fetch filtered products
-const fetchProductFilters = createAsyncThunk(
+export const fetchProductFilters = createAsyncThunk(
   "products/fetchByFilters",
   async (filters = {}, { rejectWithValue }) => {
     try {
@@ -24,14 +25,10 @@ const fetchProductFilters = createAsyncThunk(
       if (filters.size) query.append("sizes", filters.size);
       if (filters.color) query.append("color", filters.color);
       if (filters.gender) query.append("gender", filters.gender);
-  if (filters.minPrice && !isNaN(filters.minPrice)) {
-  query.append("minPrice", filters.minPrice);
-}
-if (filters.maxPrice && !isNaN(filters.maxPrice)) {
-  query.append("maxPrice", filters.maxPrice);
-}
+      if (filters.minPrice && !isNaN(filters.minPrice)) query.append("minPrice", filters.minPrice);
+      if (filters.maxPrice && !isNaN(filters.maxPrice)) query.append("maxPrice", filters.maxPrice);
       if (filters.sortBy) query.append("sort", convertSortKey(filters.sortBy));
-      if (filters.keyword) query.append("keyword", filters.keyword); // match backend
+      if (filters.keyword) query.append("keyword", filters.keyword);
       if (filters.category) query.append("category", filters.category);
       if (filters.material) query.append("material", filters.material);
       if (filters.brand) query.append("brand", filters.brand);
@@ -46,7 +43,7 @@ if (filters.maxPrice && !isNaN(filters.maxPrice)) {
 );
 
 /* ------------------------ 📦 Fetch Single Product ------------------------ */
-const fetchProductDetail = createAsyncThunk(
+export const fetchProductDetail = createAsyncThunk(
   "products/fetchProductDetail",
   async (id, { rejectWithValue }) => {
     try {
@@ -59,7 +56,7 @@ const fetchProductDetail = createAsyncThunk(
 );
 
 /* ---------------------------- ✏️ Update Product --------------------------- */
-const updateProduct = createAsyncThunk(
+export const updateProduct = createAsyncThunk(
   "products/updateProduct",
   async ({ id, productData }, { rejectWithValue }) => {
     try {
@@ -76,7 +73,7 @@ const updateProduct = createAsyncThunk(
 );
 
 /* ------------------------ 📍 Fetch Similar Products ------------------------ */
-const similarProducts = createAsyncThunk(
+export const similarProducts = createAsyncThunk(
   "products/fetchSimilarProducts",
   async ({ id }, { rejectWithValue }) => {
     try {
@@ -89,7 +86,7 @@ const similarProducts = createAsyncThunk(
 );
 
 /* ----------------------------- 🛒 Add to Cart ----------------------------- */
-const addToCart = createAsyncThunk(
+export const addToCart = createAsyncThunk(
   "products/addToCart",
   async (cartItem, { rejectWithValue }) => {
     try {
@@ -173,6 +170,11 @@ const productSlice = createSlice({
         state.loading = false;
         const product = action.payload;
 
+        // ✅ Discounted price calculate
+        const discount = product.discount || 0;
+        const price = product.price || 0;
+        product.discountedPrice = discount > 0 ? Math.round(price - (price * discount) / 100) : price;
+
         // Normalize fallback (in case old data still has `color` or `size`)
         product.colors = Array.isArray(product.colors)
           ? product.colors
@@ -244,11 +246,3 @@ const productSlice = createSlice({
 export const { setFilters, clearFilters } = productSlice.actions;
 export default productSlice.reducer;
 
-// ✅ Export async thunks
-export {
-  fetchProductFilters,
-  fetchProductDetail,
-  updateProduct,
-  similarProducts,
-  addToCart,
-};

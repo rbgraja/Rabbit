@@ -6,11 +6,21 @@ const { protect, authorizeRoles } = require("../middleware/auth"); // 🔐 Auth 
 // 🛠 Create router
 const router = express.Router();
 
+// 🔧 Helper function: calculate discounted price
+const getDiscountedPrice = (product) => {
+  if (!product) return null;
+  const price = product.price;
+  const discount = product.discount || 0;
+  const discountedPrice =
+    discount > 0 ? price - (price * discount) / 100 : price;
+  return Math.round(discountedPrice);
+};
+
 /**
  * ========================================================================
- * @route   POST /api/products
- * @desc    Create a new product
- * @access  Private (admin only)
+ * @route   GET /api/products
+ * @desc    Get all products with filters
+ * @access  Public
  * ========================================================================
  */
 router.get("/", async (req, res) => {
@@ -47,14 +57,14 @@ router.get("/", async (req, res) => {
       ];
     }
 
-    // 🎯 Category (single selection)
+    // 🎯 Category
     if (category && category.toLowerCase() !== "all") {
       filter.category = { $regex: new RegExp(`^${category}$`, "i") };
     }
 
-    // 🏷️ Brand (multiple OR)
+    // 🏷️ Brand
     if (brand) {
-      const brandArray = brand.split(",").map(b => new RegExp(`^${b.trim()}$`, "i"));
+      const brandArray = brand.split(",").map((b) => new RegExp(`^${b.trim()}$`, "i"));
       filter.brand = { $in: brandArray };
     }
 
@@ -63,25 +73,25 @@ router.get("/", async (req, res) => {
       filter.collection = { $regex: new RegExp(`^${collection}$`, "i") };
     }
 
-    // 📏 Sizes (multiple OR)
+    // 📏 Sizes
     if (sizes) {
-      const sizesArray = sizes.split(",").map(s => s.trim());
+      const sizesArray = sizes.split(",").map((s) => s.trim());
       filter.sizes = { $in: sizesArray };
     }
 
-    // 🎨 Colors (multiple OR)
+    // 🎨 Colors
     if (color) {
-      const colorArray = color.split(",").map(c => c.trim().toLowerCase());
+      const colorArray = color.split(",").map((c) => c.trim().toLowerCase());
       filter.colors = { $in: colorArray };
     }
 
-    // 🧵 Material (multiple OR)
+    // 🧵 Material
     if (material) {
-      const materialArray = material.split(",").map(m => new RegExp(`^${m.trim()}$`, "i"));
+      const materialArray = material.split(",").map((m) => new RegExp(`^${m.trim()}$`, "i"));
       filter.material = { $in: materialArray };
     }
 
-    // 🚻 Gender (single)
+    // 🚻 Gender
     if (gender) {
       filter.gender = { $regex: new RegExp(`^${gender}$`, "i") };
     }
@@ -119,11 +129,16 @@ router.get("/", async (req, res) => {
 
     // 🧮 Fetch products
     const productQuery = Product.find(filter).sort(sortOption);
-
     if (limit && !isNaN(limit)) productQuery.limit(Number(limit));
-
     const products = await productQuery;
-    res.status(200).json({ products });
+
+    // Attach discounted price
+    const productsWithDiscount = products.map((p) => ({
+      ...p._doc,
+      discountedPrice: getDiscountedPrice(p),
+    }));
+
+    res.status(200).json({ products: productsWithDiscount });
   } catch (err) {
     console.error("🔥 Fetch Products Error:", err);
     res.status(500).json({ message: err.message || "Server Error" });
@@ -139,23 +154,19 @@ router.get("/", async (req, res) => {
  */
 router.get("/filters", async (req, res) => {
   try {
-    // 🔹 Build query dynamically
     const query = {};
-
     if (req.query.gender) query.gender = req.query.gender;
     if (req.query.category) query.category = req.query.category;
     if (req.query.brand) query.brand = { $in: req.query.brand.split(",") };
     if (req.query.size) query.sizes = { $in: req.query.size.split(",") };
     if (req.query.material) query.material = { $in: req.query.material.split(",") };
     if (req.query.color) query.colors = { $in: req.query.color.split(",") };
-
     if (req.query.minPrice || req.query.maxPrice) {
       query.price = {};
       if (req.query.minPrice) query.price.$gte = Number(req.query.minPrice);
       if (req.query.maxPrice) query.price.$lte = Number(req.query.maxPrice);
     }
 
-    // Force arrays and filter falsy values
     const categories = (await Product.distinct("category", query)) || [];
     const colors = (await Product.distinct("colors", query)) || [];
     const sizes = (await Product.distinct("sizes", query)) || [];
@@ -173,56 +184,7 @@ router.get("/filters", async (req, res) => {
     });
   } catch (err) {
     console.error("❌ Fetch Filter Options Error:", err.message);
-
-    // Retry logic (same as tumhare code me tha)
-    let retries = 0;
-    const maxRetries = 3;
-    let success = false;
-    let lastError = null;
-
-    while (retries < maxRetries && !success) {
-      try {
-        const query = {};
-
-        if (req.query.gender) query.gender = req.query.gender;
-        if (req.query.category) query.category = req.query.category;
-        if (req.query.brand) query.brand = { $in: req.query.brand.split(",") };
-        if (req.query.size) query.sizes = { $in: req.query.size.split(",") };
-        if (req.query.material) query.material = { $in: req.query.material.split(",") };
-        if (req.query.color) query.colors = { $in: req.query.color.split(",") };
-
-        if (req.query.minPrice || req.query.maxPrice) {
-          query.price = {};
-          if (req.query.minPrice) query.price.$gte = Number(req.query.minPrice);
-          if (req.query.maxPrice) query.price.$lte = Number(req.query.maxPrice);
-        }
-
-        const categories = (await Product.distinct("category", query)) || [];
-        const colors = (await Product.distinct("colors", query)) || [];
-        const sizes = (await Product.distinct("sizes", query)) || [];
-        const materials = (await Product.distinct("material", query)) || [];
-        const brands = (await Product.distinct("brand", query)) || [];
-        const genders = (await Product.distinct("gender", query)) || [];
-
-        res.status(200).json({
-          categories: categories.filter(Boolean),
-          colors: colors.filter(Boolean),
-          sizes: sizes.filter(Boolean),
-          materials: materials.filter(Boolean),
-          brands: brands.filter(Boolean),
-          genders: genders.filter(Boolean),
-        });
-        success = true;
-      } catch (err2) {
-        retries++;
-        lastError = err2;
-        console.warn(`Retry ${retries} failed:`, err2.message);
-      }
-    }
-
-    if (!success) {
-      res.status(500).json({ message: "Server Error", error: lastError.message });
-    }
+    res.status(500).json({ message: "Server Error", error: err.message });
   }
 });
 
@@ -236,7 +198,6 @@ router.get("/filters", async (req, res) => {
 router.get("/best-sellers", async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 10;
-
     const bestSellers = await Product.find({
       isActive: true,
       isPublished: true,
@@ -250,7 +211,12 @@ router.get("/best-sellers", async (req, res) => {
       ])
       .limit(limit);
 
-    res.status(200).json(bestSellers);
+    const bestSellersWithDiscount = bestSellers.map((p) => ({
+      ...p._doc,
+      discountedPrice: getDiscountedPrice(p),
+    }));
+
+    res.status(200).json(bestSellersWithDiscount);
   } catch (err) {
     console.error("❌ Fetch Best Sellers Error:", err.message);
     res.status(500).json({ message: "Server Error", error: err.message });
@@ -267,7 +233,6 @@ router.get("/best-sellers", async (req, res) => {
 router.get("/new-arrivals", async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 10;
-
     const newArrivals = await Product.find({
       isActive: true,
       isPublished: true,
@@ -276,7 +241,12 @@ router.get("/new-arrivals", async (req, res) => {
       .sort({ createdAt: -1 })
       .limit(limit);
 
-    res.status(200).json(newArrivals);
+    const arrivalsWithDiscount = newArrivals.map((p) => ({
+      ...p._doc,
+      discountedPrice: getDiscountedPrice(p),
+    }));
+
+    res.status(200).json(arrivalsWithDiscount);
   } catch (err) {
     console.error("❌ Fetch New Arrivals Error:", err.message);
     res.status(500).json({ message: "Server Error", error: err.message });
@@ -295,7 +265,10 @@ router.get("/:id", async (req, res) => {
     const product = await Product.findById(req.params.id);
     if (!product) return res.status(404).json({ message: "Product not found" });
 
-    res.json(product);
+    res.json({
+      ...product._doc,
+      discountedPrice: getDiscountedPrice(product),
+    });
   } catch (err) {
     console.error("Get Product By ID Error:", err.message);
     res.status(500).json({ message: "Server Error" });
@@ -320,7 +293,10 @@ router.put("/:id", protect, authorizeRoles("admin"), async (req, res) => {
     if (!updatedProduct)
       return res.status(404).json({ message: "Product not found" });
 
-    res.json(updatedProduct);
+    res.json({
+      ...updatedProduct._doc,
+      discountedPrice: getDiscountedPrice(updatedProduct),
+    });
   } catch (err) {
     console.error("Update Product Error:", err.message);
     res.status(500).json({ message: "Server Error" });
@@ -337,7 +313,6 @@ router.put("/:id", protect, authorizeRoles("admin"), async (req, res) => {
 router.get("/similar/:id", async (req, res) => {
   try {
     const currentProduct = await Product.findById(req.params.id);
-
     if (!currentProduct) {
       return res.status(404).json({ message: "Product not found" });
     }
@@ -351,7 +326,12 @@ router.get("/similar/:id", async (req, res) => {
       stock: { $gt: 0 },
     }).limit(4);
 
-    res.json(similarProducts);
+    const similarWithDiscount = similarProducts.map((p) => ({
+      ...p._doc,
+      discountedPrice: getDiscountedPrice(p),
+    }));
+
+    res.json(similarWithDiscount);
   } catch (err) {
     console.error("Fetch Similar Products Error:", err.message);
     res.status(500).json({ message: "Server Error" });
@@ -367,16 +347,13 @@ router.get("/similar/:id", async (req, res) => {
  */
 router.post("/:id/reviews", protect, async (req, res) => {
   const { rating, comment } = req.body;
-
   try {
     const product = await Product.findById(req.params.id);
-    if (!product)
-      return res.status(404).json({ message: "Product not found" });
+    if (!product) return res.status(404).json({ message: "Product not found" });
 
     const alreadyReviewed = product.reviews.find(
       (r) => r.user.toString() === req.user.id.toString()
     );
-
     if (alreadyReviewed) {
       return res.status(400).json({ message: "Product already reviewed" });
     }

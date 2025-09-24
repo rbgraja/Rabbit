@@ -160,7 +160,22 @@ function NewArrival() {
                 <div className="absolute bottom-0 left-0 right-0 bg-black/50 backdrop-blur-md text-white p-4 rounded-b-lg">
                   <Link to={`/product/${product._id}`}>
                     <h4 className="font-medium">{product.name}</h4>
-                    <p className="mt-1">${product.price}</p>
+                    {product.discount > 0 ? (
+  <div className="mt-1 flex items-center space-x-2">
+    <span className="text-red-400 font-semibold">
+      ${product.discountedPrice}
+    </span>
+    <span className="line-through text-gray-300 text-sm">
+      ${product.price}
+    </span>
+    <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded">
+      -{product.discount}%
+    </span>
+  </div>
+) : (
+  <p className="mt-1">${product.price}</p>
+)}
+
                   </Link>
                 </div>
               </div>

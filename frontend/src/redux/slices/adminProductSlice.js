@@ -43,7 +43,7 @@ export const getAdminProductById = createAsyncThunk(
   }
 );
 
-// Create product (updated like updateProduct)
+// Create product
 export const createProduct = createAsyncThunk(
   "adminProducts/create",
   async (productData, { rejectWithValue, getState }) => {
@@ -53,18 +53,21 @@ export const createProduct = createAsyncThunk(
 
       const formData = new FormData();
 
-      // Append normal fields
+      // Append normal fields (including discount)
       for (const key in productData) {
         if (key === "images") continue; // files separately
         const value = productData[key];
-        formData.append(key, Array.isArray(value) ? JSON.stringify(value) : value);
+        formData.append(
+          key,
+          Array.isArray(value) ? JSON.stringify(value) : value
+        );
       }
 
       // Append images files if exist
       if (productData.images && productData.images.length) {
         productData.images.forEach((img) => {
-          if (img.file) formData.append("images", img.file); // file object
-          else if (img.url) formData.append("images", img.url); // optional fallback
+          if (img.file) formData.append("images", img.file);
+          else if (img.url) formData.append("images", img.url);
         });
       }
 
@@ -82,10 +85,6 @@ export const createProduct = createAsyncThunk(
   }
 );
 
-
-
-
-
 // Update product
 export const updateProduct = createAsyncThunk(
   "adminProducts/update",
@@ -96,12 +95,22 @@ export const updateProduct = createAsyncThunk(
 
       const payload = {
         ...updates,
-        images: updates.images?.map((img) => ({ url: img.url, alt: img.alt || "" })),
+        // images safe mapping
+        images: updates.images?.map((img) => ({
+          url: img.url,
+          alt: img.alt || "",
+        })),
+        // ensure discount field bhi bheji jaye
+        discount: updates.discount || 0,
       };
 
-      const res = await axios.put(`${BASE_URL}/api/admin/products/${id}`, payload, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await axios.put(
+        `${BASE_URL}/api/admin/products/${id}`,
+        payload,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
       return res.data.product;
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || err.message);
@@ -146,36 +155,90 @@ const adminProductSlice = createSlice({
   extraReducers: (builder) => {
     builder
       // Fetch all
-      .addCase(fetchAdminProducts.pending, (state) => { state.loading = true; state.error = null; })
-      .addCase(fetchAdminProducts.fulfilled, (state, action) => { state.loading = false; state.products = action.payload; })
-      .addCase(fetchAdminProducts.rejected, (state, action) => { state.loading = false; state.error = action.payload; })
+      .addCase(fetchAdminProducts.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchAdminProducts.fulfilled, (state, action) => {
+        state.loading = false;
+        // ✅ har product ke sath discount info bhi store hoga
+        state.products = action.payload;
+      })
+      .addCase(fetchAdminProducts.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
 
       // Get by ID
-      .addCase(getAdminProductById.pending, (state) => { state.loading = true; state.error = null; state.productDetail = null; })
-      .addCase(getAdminProductById.fulfilled, (state, action) => { state.loading = false; state.productDetail = action.payload; })
-      .addCase(getAdminProductById.rejected, (state, action) => { state.loading = false; state.error = action.payload; state.productDetail = null; })
+      .addCase(getAdminProductById.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+        state.productDetail = null;
+      })
+      .addCase(getAdminProductById.fulfilled, (state, action) => {
+        state.loading = false;
+        state.productDetail = action.payload; // ✅ includes discount, discountedPrice
+      })
+      .addCase(getAdminProductById.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+        state.productDetail = null;
+      })
 
       // Create
-      .addCase(createProduct.pending, (state) => { state.loading = true; state.error = null; })
-      .addCase(createProduct.fulfilled, (state, action) => { state.loading = false; state.products.unshift(action.payload); })
-      .addCase(createProduct.rejected, (state, action) => { state.loading = false; state.error = action.payload; })
+      .addCase(createProduct.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(createProduct.fulfilled, (state, action) => {
+        state.loading = false;
+        state.products.unshift(action.payload); // ✅ includes discount fields
+      })
+      .addCase(createProduct.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
 
       // Update
-      .addCase(updateProduct.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(updateProduct.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(updateProduct.fulfilled, (state, action) => {
         state.loading = false;
-        const idx = state.products.findIndex(p => p._id === action.payload._id);
+        const idx = state.products.findIndex(
+          (p) => p._id === action.payload._id
+        );
         if (idx !== -1) state.products[idx] = action.payload;
-        if (state.productDetail && state.productDetail._id === action.payload._id) state.productDetail = action.payload;
+        if (
+          state.productDetail &&
+          state.productDetail._id === action.payload._id
+        )
+          state.productDetail = action.payload;
       })
-      .addCase(updateProduct.rejected, (state, action) => { state.loading = false; state.error = action.payload; })
+      .addCase(updateProduct.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
 
       // Delete
-      .addCase(deleteProduct.pending, (state) => { state.loading = true; state.error = null; })
-      .addCase(deleteProduct.fulfilled, (state, action) => { state.loading = false; state.products = state.products.filter(p => p._id !== action.payload); })
-      .addCase(deleteProduct.rejected, (state, action) => { state.loading = false; state.error = action.payload; });
+      .addCase(deleteProduct.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(deleteProduct.fulfilled, (state, action) => {
+        state.loading = false;
+        state.products = state.products.filter(
+          (p) => p._id !== action.payload
+        );
+      })
+      .addCase(deleteProduct.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      });
   },
 });
 
-export const { clearAdminProductError, clearProductDetail } = adminProductSlice.actions;
+export const { clearAdminProductError, clearProductDetail } =
+  adminProductSlice.actions;
 export default adminProductSlice.reducer;

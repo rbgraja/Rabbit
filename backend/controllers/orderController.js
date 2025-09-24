@@ -1,42 +1,61 @@
 const Order = require("../models/orderModel");
 const Cart = require("../models/Cart");
-const Product = require("../models/products"); // ✅ Import product model
+const Product = require("../models/products");
 const mongoose = require("mongoose");
+
+/** 🧮 Helper: get discounted price */
+const getDiscountedPrice = (product) => {
+  if (!product) return 0;
+  const discount = product.discount || 0;
+  const price = product.price || 0;
+  return discount > 0 ? Math.round(price - (price * discount) / 100) : price;
+};
+
+/** 🔢 Calculate total order price */
+const calculateTotal = (items) =>
+  items.reduce(
+    (acc, item) => acc + (Number(item.price) * Number(item.quantity) || 0),
+    0
+  );
 
 // @desc    Create a new order
 // @route   POST /api/orders
 // @access  Private
 exports.createOrder = async (req, res) => {
   try {
-    const { orderItems, shippingAddress, paymentmethod, totalPrice } = req.body;
+    const { orderItems, shippingAddress, paymentmethod } = req.body;
     const userId = req.user?.id;
 
     console.log("📦 Creating order for user:", userId);
-    console.log("Order items:", orderItems);
 
     // 🛑 Validations
     if (!orderItems || !Array.isArray(orderItems) || orderItems.length === 0) {
-      return res.status(400).json({ message: "Order items are required" });
+      return res
+        .status(400)
+        .json({ message: "Order items are required" });
     }
 
     if (!shippingAddress) {
-      return res.status(400).json({ message: "Shipping address is required" });
+      return res
+        .status(400)
+        .json({ message: "Shipping address is required" });
     }
 
     if (!paymentmethod || typeof paymentmethod !== "string") {
-      return res.status(400).json({ message: "Payment method is required" });
+      return res
+        .status(400)
+        .json({ message: "Payment method is required" });
     }
 
-    if (!totalPrice || isNaN(totalPrice)) {
-      return res.status(400).json({ message: "Total price must be a valid number" });
-    }
-
-    // ✅ Check stock and update
+    /** ✅ Re-validate prices from DB */
+    let validatedItems = [];
     for (const item of orderItems) {
       const product = await Product.findById(item.productId);
 
       if (!product) {
-        return res.status(404).json({ message: `Product not found: ${item.productId}` });
+        return res
+          .status(404)
+          .json({ message: `Product not found: ${item.productId}` });
       }
 
       if (product.stock < item.quantity) {
@@ -45,15 +64,31 @@ exports.createOrder = async (req, res) => {
         });
       }
 
+      // discounted price
+      const discountedPrice = getDiscountedPrice(product);
+
+      validatedItems.push({
+        productId: product._id,
+        name: product.name,
+        image: product.images?.[0]?.url || "",
+        price: discountedPrice,
+        size: item.size || "default",
+        color: item.color || { name: "Default", hex: "#ccc" },
+        quantity: item.quantity,
+      });
+
       // 🔽 Reduce stock
       product.stock -= item.quantity;
       await product.save();
     }
 
+    // ✅ Calculate final total
+    const totalPrice = calculateTotal(validatedItems);
+
     // ✅ Create new order
     const newOrder = new Order({
       user: new mongoose.Types.ObjectId(userId),
-      orderItems,
+      orderItems: validatedItems,
       shippingAddress,
       paymentmethod,
       totalPrice,
@@ -67,12 +102,15 @@ exports.createOrder = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: "Order placed successfully, stock updated, and cart cleared",
+      message:
+        "Order placed successfully, stock updated, and cart cleared",
       order: savedOrder,
     });
   } catch (error) {
     console.error("❌ Error placing order:", error.message);
-    res.status(500).json({ message: "Server error while placing order" });
+    res
+      .status(500)
+      .json({ message: "Server error while placing order" });
   }
 };
 
@@ -83,10 +121,14 @@ exports.getMyOrders = async (req, res) => {
   try {
     const userId = req.user?.id;
 
-    const orders = await Order.find({ user: userId }).sort({ createdAt: -1 });
+    const orders = await Order.find({ user: userId }).sort({
+      createdAt: -1,
+    });
 
     if (!orders || orders.length === 0) {
-      return res.status(404).json({ message: "No orders found for this user" });
+      return res
+        .status(404)
+        .json({ message: "No orders found for this user" });
     }
 
     res.status(200).json({
@@ -96,7 +138,9 @@ exports.getMyOrders = async (req, res) => {
     });
   } catch (error) {
     console.error("❌ Error getting user orders:", error.message);
-    res.status(500).json({ message: "Server error while fetching orders" });
+    res
+      .status(500)
+      .json({ message: "Server error while fetching orders" });
   }
 };
 
@@ -109,7 +153,10 @@ exports.getOrderById = async (req, res) => {
     const userId = req.user?.id;
     const userRole = req.user?.role;
 
-    const order = await Order.findById(orderId).populate("user", "name email");
+    const order = await Order.findById(orderId).populate(
+      "user",
+      "name email"
+    );
 
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
@@ -120,7 +167,9 @@ exports.getOrderById = async (req, res) => {
       order.user._id.toString() !== userId.toString() &&
       userRole !== "admin"
     ) {
-      return res.status(403).json({ message: "Not authorized to view this order" });
+      return res
+        .status(403)
+        .json({ message: "Not authorized to view this order" });
     }
 
     res.status(200).json({
@@ -129,6 +178,8 @@ exports.getOrderById = async (req, res) => {
     });
   } catch (error) {
     console.error("❌ Error fetching order by ID:", error.message);
-    res.status(500).json({ message: "Server error while retrieving order" });
+    res
+      .status(500)
+      .json({ message: "Server error while retrieving order" });
   }
 };

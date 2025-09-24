@@ -196,101 +196,178 @@ router.post("/upload", protect, authorizeRoles("admin"), upload.single("file"), 
 });
 
 // Create product
-router.post("/products", protect, authorizeRoles("admin"), upload.array("images"), async (req,res)=>{
-  try {
-    const {
-      name, description, price, stock, sku, brand, sizes, colors,
-      collection, material, gender, isFeatured, isActive, isPublished, category, imagesData
-    } = req.body;
+router.post(
+  "/products",
+  protect,
+  authorizeRoles("admin"),
+  upload.array("images"),
+  async (req, res) => {
+    try {
+      const {
+        name,
+        description,
+        price,
+        stock,
+        sku,
+        brand,
+        sizes,
+        colors,
+        collection,
+        material,
+        gender,
+        isFeatured,
+        isActive,
+        isPublished,
+        category,
+        imagesData,
+        discount, // ✅ added
+      } = req.body;
 
-    const sizesArray = sizes ? JSON.parse(sizes) : [];
-    const colorsArray = colors ? JSON.parse(colors) : [];
-    const imagesArray = imagesData ? JSON.parse(imagesData) : [];
+      const sizesArray = sizes ? JSON.parse(sizes) : [];
+      const colorsArray = colors ? JSON.parse(colors) : [];
+      const imagesArray = imagesData ? JSON.parse(imagesData) : [];
 
-    // Upload new files
-    const uploadedImages = await Promise.all(
-      (req.files || []).map((file,i)=>{
-        const altText = imagesArray[i]?.alt?.trim() || file.originalname;
-        return new Promise((resolve,reject)=>{
-          const stream = cloudinary.uploader.upload_stream({ folder:"products" }, (err,result)=>{
-            if(err) reject(err);
-            else resolve({ url: result.secure_url, alt: altText });
+      // Upload new files
+      const uploadedImages = await Promise.all(
+        (req.files || []).map((file, i) => {
+          const altText = imagesArray[i]?.alt?.trim() || file.originalname;
+          return new Promise((resolve, reject) => {
+            const stream = cloudinary.uploader.upload_stream(
+              { folder: "products" },
+              (err, result) => {
+                if (err) reject(err);
+                else resolve({ url: result.secure_url, alt: altText });
+              }
+            );
+            streamifier.createReadStream(file.buffer).pipe(stream);
           });
-          streamifier.createReadStream(file.buffer).pipe(stream);
-        });
-      })
-    );
+        })
+      );
 
-    // Combine uploaded images (no existing images in create)
-    const finalImages = uploadedImages;
+      const finalImages = uploadedImages;
 
-    const product = await Product.create({
-      name, description, price, stock, sku, brand, sizes: sizesArray,
-      colors: colorsArray, collection, material, gender,
-      isFeatured, isActive, isPublished, category,
-      images: finalImages
-    });
+      const product = await Product.create({
+        name,
+        description,
+        price: Number(price), // ✅ force number
+        stock: Number(stock),
+        discount: Number(discount) || 0, // ✅ force number
+        sku,
+        brand,
+        sizes: sizesArray,
+        colors: colorsArray,
+        collection,
+        material,
+        gender,
+        isFeatured,
+        isActive,
+        isPublished,
+        category,
+        images: finalImages,
+      });
 
-    res.status(201).json({ success: true, product });
-
-  } catch(err){
-    console.error(err);
-    res.status(500).json({success:false,message:"Server error",error:err.message});
+      res.status(201).json({ success: true, product });
+    } catch (err) {
+      console.error(err);
+      res
+        .status(500)
+        .json({ success: false, message: "Server error", error: err.message });
+    }
   }
-});
-
-
+);
 
 // Update product
-router.put("/products/:id", protect, authorizeRoles("admin"), upload.array("images"), async (req,res)=>{
-  try {
-    const product = await Product.findById(req.params.id);
-    if(!product) return res.status(404).json({success:false,message:"Product not found"});
+router.put(
+  "/products/:id",
+  protect,
+  authorizeRoles("admin"),
+  upload.array("images"),
+  async (req, res) => {
+    try {
+      const product = await Product.findById(req.params.id);
+      if (!product)
+        return res
+          .status(404)
+          .json({ success: false, message: "Product not found" });
 
-    const {
-      name, description, price, stock, sku, brand, sizes, colors,
-      collection, material, gender, isFeatured, isActive, isPublished, category, imagesData
-    } = req.body;
+      const {
+        name,
+        description,
+        price,
+        stock,
+        sku,
+        brand,
+        sizes,
+        colors,
+        collection,
+        material,
+        gender,
+        isFeatured,
+        isActive,
+        isPublished,
+        category,
+        imagesData,
+        discount, // ✅ added
+      } = req.body;
 
-    const sizesArray = sizes ? JSON.parse(sizes) : [];
-    const colorsArray = colors ? JSON.parse(colors) : [];
-    const imagesArray = imagesData ? JSON.parse(imagesData) : [];
+      const sizesArray = sizes ? JSON.parse(sizes) : [];
+      const colorsArray = colors ? JSON.parse(colors) : [];
+      const imagesArray = imagesData ? JSON.parse(imagesData) : [];
 
-    // Upload new files
-    const uploadedImages = await Promise.all(
-      (req.files || []).map((file,i)=>{
-        const altText = imagesArray.find(img => !img.url)?.alt || file.originalname;
-        return new Promise((resolve,reject)=>{
-          const stream = cloudinary.uploader.upload_stream({ folder:"products" }, (err,result)=>{
-            if(err) reject(err);
-            else resolve({ url: result.secure_url, alt: altText });
+      // Upload new files
+      const uploadedImages = await Promise.all(
+        (req.files || []).map((file, i) => {
+          const altText =
+            imagesArray.find((img) => !img.url)?.alt || file.originalname;
+          return new Promise((resolve, reject) => {
+            const stream = cloudinary.uploader.upload_stream(
+              { folder: "products" },
+              (err, result) => {
+                if (err) reject(err);
+                else resolve({ url: result.secure_url, alt: altText });
+              }
+            );
+            streamifier.createReadStream(file.buffer).pipe(stream);
           });
-          streamifier.createReadStream(file.buffer).pipe(stream);
-        });
-      })
-    );
+        })
+      );
 
-    // Replace product.images with existing URLs + newly uploaded images
-    const finalImages = [
-      ...imagesArray.filter(img => img.url), // existing images kept
-      ...uploadedImages // new uploaded images
-    ];
+      const finalImages = [
+        ...imagesArray.filter((img) => img.url),
+        ...uploadedImages,
+      ];
 
-    Object.assign(product,{
-      name, description, price, stock, sku, brand, sizes: sizesArray,
-      colors: colorsArray, collection, material, gender,
-      isFeatured, isActive, isPublished, category,
-      images: finalImages
-    });
+      Object.assign(product, {
+        name,
+        description,
+        price: Number(price), // ✅ force number
+        stock: Number(stock),
+        discount: Number(discount) || 0, // ✅ force number
+        sku,
+        brand,
+        sizes: sizesArray,
+        colors: colorsArray,
+        collection,
+        material,
+        gender,
+        isFeatured,
+        isActive,
+        isPublished,
+        category,
+        images: finalImages,
+      });
 
-    await product.save();
-    res.json({ success:true, product });
-
-  } catch(err){
-    console.error(err);
-    res.status(500).json({success:false,message:"Server error",error:err.message});
+      await product.save();
+      res.json({ success: true, product });
+    } catch (err) {
+      console.error(err);
+      res
+        .status(500)
+        .json({ success: false, message: "Server error", error: err.message });
+    }
   }
-});
+);
+
 
 
 router.delete("/products/:id", protect, authorizeRoles("admin"), async (req, res) => {

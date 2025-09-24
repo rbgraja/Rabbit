@@ -178,7 +178,28 @@ function ProductDetail({ productId: propProductId }) {
           {/* Info */}
           <div className="md:w-1/2 space-y-5">
             <h1 className="text-3xl font-bold text-gray-900">{selectedProduct.name}</h1>
-            <p className="text-2xl text-green-600 font-semibold">${selectedProduct.price}</p>
+      {/* Price */}
+{selectedProduct.discount > 0 ? (
+  <div className="flex items-center space-x-3">
+    <span className="text-2xl font-bold text-red-600">
+      $
+      {(
+        selectedProduct.price -
+        (selectedProduct.price * selectedProduct.discount) / 100
+      ).toFixed(2)}
+    </span>
+    <span className="line-through text-gray-500 text-lg">
+      ${selectedProduct.price}
+    </span>
+    <span className="bg-red-500 text-white text-sm px-2 py-1 rounded">
+      -{selectedProduct.discount}%
+    </span>
+  </div>
+) : (
+  <p className="text-2xl text-green-600 font-semibold">
+    ${selectedProduct.price}
+  </p>
+)}
             <p className="text-gray-600">{selectedProduct.description}</p>
             <p className="text-sm text-gray-500">Stock: {selectedProduct?.stock ?? "N/A"}</p>
 
