@@ -38,6 +38,7 @@ function Handleedit() {
     isActive: true,
     isPublished: false,
     discount: 0,
+    rating: 0, 
   };
 
   const [productData, setProductData] = useState(fallbackProduct);
@@ -81,7 +82,7 @@ function Handleedit() {
     const { name, value, type, checked } = e.target;
     if (type === "checkbox") {
       setProductData({ ...productData, [name]: checked });
-    } else if (name === "price" || name === "stock" || name === "discount") {
+    } else if (name === "price" || name === "stock" || name === "discount" ||  name === "rating") {
       setProductData({ ...productData, [name]: Number(value) });
     } else if (name === "sizes") {
       setProductData({
@@ -146,6 +147,7 @@ function Handleedit() {
       formData.append("description", productData.description);
       formData.append("price", productData.price);
       formData.append("discount", productData.discount.toString());
+      formData.append("rating", productData.rating.toString());
       formData.append("stock", productData.stock);
       formData.append("sku", productData.sku);
       formData.append("brand", productData.brand);
@@ -241,7 +243,7 @@ function Handleedit() {
               <input
                 type={
                   field === "price" || field === "stock" ? "number" : "text"
-                } required 
+                }  
                 name={field}
                 value={
                   Array.isArray(productData[field])
@@ -250,31 +252,50 @@ function Handleedit() {
                 }
                 onChange={handleChange}
                 className="border p-2 rounded w-full"
-                required={
+                required ={
                   ["name", "sku", "price", "stock", "description", "category", "collection"].includes(field)
                 }
               />
             </div>
           ))}
 
-          {/* Discount */}
-          <div>
-            <label className="block font-medium mb-1">
-              Discount (%){" "}
-              <span className="text-sm text-gray-500">
-                (0–100, e.g., 10 for 10%)
-              </span>
-            </label>
-            <input required 
-              type="number"
-              name="discount"
-              value={productData.discount || 0}
-              onChange={handleChange}
-              className="border p-2 rounded w-full"
-              min="0"
-              max="100"
-            />
-          </div>
+    {/* Discount */}
+<div>
+  <label className="block font-medium mb-1">
+    Discount (%){" "}
+    <span className="text-sm text-gray-500">
+      (0–100, e.g., 10 for 10%)
+    </span>
+  </label>
+  <input
+    required
+    type="number"
+    name="discount"
+    value={productData.discount || 0}
+    onChange={handleChange}
+    className="border p-2 rounded w-full"
+    min="0"
+    max="100"
+  />
+</div>
+
+{/* ⭐ Rating */}
+<div>
+  <label className="block font-medium mb-1">
+    Rating (0–5)
+  </label>
+  <input
+    type="number"
+    name="rating"
+    value={productData.rating || 0}
+    onChange={handleChange}
+    className="border p-2 rounded w-full"
+    min="0"
+    max="5"
+    step="0.1"
+  />
+</div>
+
 
           {/* Gender */}
           <div>
@@ -382,14 +403,14 @@ function Handleedit() {
         <div>
           <h4 className="font-medium mb-2">Images</h4>
           <div className="mb-2 flex flex-col gap-2">
-            <input required 
+            <input 
               type="file"
               accept="image/*"
               onChange={handleFileUpload}
               className="border p-2 rounded w-full"
               disabled={uploading}
             />
-            <input required 
+            <input
               type="text"
               placeholder="Alt text for image"
               value={uploadedImageAlt || ""}

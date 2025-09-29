@@ -338,46 +338,54 @@ router.get("/similar/:id", async (req, res) => {
   }
 });
 
-/**
- * ========================================================================
- * @route   POST /api/products/:id/reviews
- * @desc    Add review to product
- * @access  Private (logged-in users)
- * ========================================================================
- */
+// @route   POST /api/products/:id/reviews
+// @desc    Add or update review for product
+// @access  Private (logged-in users)
 router.post("/:id/reviews", protect, async (req, res) => {
   const { rating, comment } = req.body;
+
   try {
     const product = await Product.findById(req.params.id);
     if (!product) return res.status(404).json({ message: "Product not found" });
 
     const alreadyReviewed = product.reviews.find(
-      (r) => r.user.toString() === req.user.id.toString()
+      (r) => r.user.toString() === req.user.id.toString() // ✅ token se id
     );
+
     if (alreadyReviewed) {
-      return res.status(400).json({ message: "Product already reviewed" });
+      // Update existing review
+      alreadyReviewed.rating = Number(rating);
+      alreadyReviewed.comment = comment;
+    } else {
+      // Add new review
+      const review = {
+        user: req.user.id,    // ✅ token se id
+        name: req.user.name,  // ✅ token se name
+        rating: Number(rating),
+        comment,
+      };
+      product.reviews.push(review);
     }
 
-    const review = {
-      user: req.user.id,
-      name: req.user.name,
-      rating: Number(rating),
-      comment,
-    };
-
-    product.reviews.push(review);
     product.numReviews = product.reviews.length;
-    product.rating =
-      product.reviews.reduce((acc, item) => acc + item.rating, 0) /
-      product.numReviews;
 
-    await product.save();
-    res.status(201).json({ message: "Review added" });
+    // Average rating
+    product.rating =
+      Math.round(
+        (product.reviews.reduce((acc, item) => acc + item.rating, 0) /
+          product.numReviews) * 10
+      ) / 10;
+
+    const updatedProduct = await product.save();
+
+    res.status(201).json(updatedProduct);
   } catch (err) {
     console.error("Add Review Error:", err.message);
     res.status(500).json({ message: "Server Error" });
   }
 });
+
+
 
 // 📤 Export router
 module.exports = router;

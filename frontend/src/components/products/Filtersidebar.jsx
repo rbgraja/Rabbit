@@ -264,7 +264,9 @@ function Filtersidebar() {
           }}
           className="mt-4 w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition"
         >
-          Apply Price
+          <span className="hidden sm:inline">Apply Price</span>
+  <span className="inline sm:hidden">Apply Changes</span>
+
         </button>
       </div>
     </div>

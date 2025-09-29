@@ -2,38 +2,45 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
 
-const BASE_URL = import.meta.env.VITE_BACKGROUND_URL;
+const BASE_URL = import.meta.env.VITE_BACKGROUND_URL || "http://localhost:9000";
+console.log("🔍 BASE_URL loaded:", BASE_URL);
 
-// 🔁 Helper to map sort keys
+/* ------------------------- Helper Functions ------------------------- */
 const convertSortKey = (key) => {
   switch (key) {
-    case "priceAsc": return "price_asc";
-    case "priceDesc": return "price_desc";
-    case "popularity": return "popular";
-    default: return "latest";
+    case "priceAsc":
+      return "price_asc";
+    case "priceDesc":
+      return "price_desc";
+    case "popularity":
+      return "popular";
+    default:
+      return "latest";
   }
 };
 
-// 🔍 Fetch filtered products
+const applyDiscount = (product) => {
+  const discount = product.discount || 0;
+  const price = product.price || 0;
+  return discount > 0 ? Math.round(price - (price * discount) / 100) : price;
+};
+
+// ✅ Token helper
+const getToken = (getState, passedToken) => {
+  return passedToken || getState()?.auth?.user?.token || localStorage.getItem("userToken");
+};
+
+/* ----------------------- Async Thunks ----------------------- */
+
+// Fetch products by filters
 export const fetchProductFilters = createAsyncThunk(
   "products/fetchByFilters",
   async (filters = {}, { rejectWithValue }) => {
     try {
       const query = new URLSearchParams();
-
-      if (filters.collection) query.append("collection", filters.collection);
-      if (filters.size) query.append("sizes", filters.size);
-      if (filters.color) query.append("color", filters.color);
-      if (filters.gender) query.append("gender", filters.gender);
-      if (filters.minPrice && !isNaN(filters.minPrice)) query.append("minPrice", filters.minPrice);
-      if (filters.maxPrice && !isNaN(filters.maxPrice)) query.append("maxPrice", filters.maxPrice);
-      if (filters.sortBy) query.append("sort", convertSortKey(filters.sortBy));
-      if (filters.keyword) query.append("keyword", filters.keyword);
-      if (filters.category) query.append("category", filters.category);
-      if (filters.material) query.append("material", filters.material);
-      if (filters.brand) query.append("brand", filters.brand);
-      if (filters.limit) query.append("limit", filters.limit);
-
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value) query.append(key, value);
+      });
       const response = await axios.get(`${BASE_URL}/api/products?${query.toString()}`);
       return response.data.products || [];
     } catch (error) {
@@ -42,7 +49,7 @@ export const fetchProductFilters = createAsyncThunk(
   }
 );
 
-/* ------------------------ 📦 Fetch Single Product ------------------------ */
+// Fetch single product detail
 export const fetchProductDetail = createAsyncThunk(
   "products/fetchProductDetail",
   async (id, { rejectWithValue }) => {
@@ -55,61 +62,95 @@ export const fetchProductDetail = createAsyncThunk(
   }
 );
 
-/* ---------------------------- ✏️ Update Product --------------------------- */
+// Update product
 export const updateProduct = createAsyncThunk(
   "products/updateProduct",
-  async ({ id, productData }, { rejectWithValue }) => {
+  async ({ id, productData, token }, { getState, rejectWithValue }) => {
     try {
+      const authToken = getToken(getState, token);
+      if (!authToken) throw new Error("No token found");
+
       const response = await axios.put(`${BASE_URL}/api/products/${id}`, productData, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("userToken")}`,
-        },
+        headers: { Authorization: `Bearer ${authToken}` },
       });
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || "Failed to update product");
+      return rejectWithValue(error.response?.data?.message || error.message || "Failed to update product");
     }
   }
 );
 
-/* ------------------------ 📍 Fetch Similar Products ------------------------ */
+// Fetch similar products
 export const similarProducts = createAsyncThunk(
   "products/fetchSimilarProducts",
   async ({ id }, { rejectWithValue }) => {
     try {
       const response = await axios.get(`${BASE_URL}/api/products/similar/${id}`);
-      return response.data;
+      return response.data || [];
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || "Failed to fetch similar products");
     }
   }
 );
 
-/* ----------------------------- 🛒 Add to Cart ----------------------------- */
+// Add to cart
 export const addToCart = createAsyncThunk(
   "products/addToCart",
-  async (cartItem, { rejectWithValue }) => {
+  async (cartItem, { getState, rejectWithValue }) => {
     try {
+      const token = getToken(getState);
+      if (!token) throw new Error("No token found");
+
       const response = await axios.post(`${BASE_URL}/api/cart`, cartItem, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("userToken")}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || "Failed to add to cart");
+      return rejectWithValue(error.response?.data?.message || error.message || "Failed to add to cart");
     }
   }
 );
 
-/* ----------------------------- 🧠 Product Slice ----------------------------- */
+// Helper: get token
+
+
+// 📝 Add review
+export const addReview = createAsyncThunk(
+  "products/addReview",
+  async ({ productId, reviewData, token }, { rejectWithValue }) => {
+    const getToken = (token) => token || localStorage.getItem("userToken");
+    try {
+      const authToken = getToken(token);
+      if (!authToken) throw new Error("No token found");
+
+      const response = await axios.post(
+        `${BASE_URL}/api/products/${productId}/reviews`,
+        reviewData,
+        { headers: { Authorization: `Bearer ${authToken}` } }
+      );
+
+      return response.data; // backend returns updated product
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || error.message || "Failed to add review"
+      );
+    }
+  }
+);
+
+
+/* ----------------------- Product Slice ----------------------- */
 const productSlice = createSlice({
   name: "products",
   initialState: {
     products: [],
     selectedProduct: null,
-    similarProducts: null,
-    loading: false,
+    similarProducts: [],
+    listLoading: false,
+    detailLoading: false,
+    updateLoading: false,
+    cartLoading: false,
+    reviewLoading: false,
     error: null,
     filters: {
       category: "",
@@ -120,7 +161,7 @@ const productSlice = createSlice({
       minPrice: "",
       maxPrice: "",
       sortBy: "",
-      search: "",
+      keyword: "",
       material: "",
       collection: "",
     },
@@ -130,119 +171,98 @@ const productSlice = createSlice({
       state.filters = { ...state.filters, ...action.payload };
     },
     clearFilters: (state) => {
-      state.filters = {
-        category: "",
-        size: "",
-        color: "",
-        gender: "",
-        brand: "",
-        minPrice: "",
-        maxPrice: "",
-        sortBy: "",
-        search: "",
-        material: "",
-        collection: "",
-      };
+      Object.keys(state.filters).forEach((k) => (state.filters[k] = ""));
     },
   },
   extraReducers: (builder) => {
     builder
-      // 🔍 Fetch by filters
+      // Fetch filtered products
       .addCase(fetchProductFilters.pending, (state) => {
-        state.loading = true;
+        state.listLoading = true;
         state.error = null;
       })
       .addCase(fetchProductFilters.fulfilled, (state, action) => {
-        state.loading = false;
+        state.listLoading = false;
         state.products = Array.isArray(action.payload) ? action.payload : [];
       })
       .addCase(fetchProductFilters.rejected, (state, action) => {
-        state.loading = false;
+        state.listLoading = false;
         state.error = action.payload || action.error.message;
       })
 
-      // 📦 Product Detail
+      // Product detail
       .addCase(fetchProductDetail.pending, (state) => {
-        state.loading = true;
+        state.detailLoading = true;
         state.error = null;
       })
       .addCase(fetchProductDetail.fulfilled, (state, action) => {
-        state.loading = false;
+        state.detailLoading = false;
         const product = action.payload;
-
-        // ✅ Discounted price calculate
-        const discount = product.discount || 0;
-        const price = product.price || 0;
-        product.discountedPrice = discount > 0 ? Math.round(price - (price * discount) / 100) : price;
-
-        // Normalize fallback (in case old data still has `color` or `size`)
+        product.discountedPrice = applyDiscount(product);
         product.colors = Array.isArray(product.colors)
           ? product.colors
           : product.color
           ? [product.color]
           : [];
-
         product.sizes = Array.isArray(product.sizes)
           ? product.sizes
           : product.size
           ? [product.size]
           : [];
-
         state.selectedProduct = product;
       })
       .addCase(fetchProductDetail.rejected, (state, action) => {
-        state.loading = false;
+        state.detailLoading = false;
         state.error = action.payload || action.error.message;
       })
 
-      // ✏️ Update Product
+      // Update product
       .addCase(updateProduct.pending, (state) => {
-        state.loading = true;
+        state.updateLoading = true;
         state.error = null;
       })
       .addCase(updateProduct.fulfilled, (state, action) => {
-        state.loading = false;
+        state.updateLoading = false;
         const updatedProduct = action.payload;
         const index = state.products.findIndex((p) => p._id === updatedProduct._id);
-        if (index !== -1) {
-          state.products[index] = updatedProduct;
-        }
+        if (index !== -1) state.products[index] = updatedProduct;
+        if (state.selectedProduct?._id === updatedProduct._id) state.selectedProduct = updatedProduct;
       })
       .addCase(updateProduct.rejected, (state, action) => {
-        state.loading = false;
+        state.updateLoading = false;
         state.error = action.payload || action.error.message;
       })
 
-      // 📍 Similar Products
-      .addCase(similarProducts.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
+      // Similar products
+      .addCase(similarProducts.pending, (state) => { state.error = null; })
       .addCase(similarProducts.fulfilled, (state, action) => {
-        state.loading = false;
-        state.similarProducts = action.payload;
+        state.similarProducts = Array.isArray(action.payload) ? action.payload : [];
       })
       .addCase(similarProducts.rejected, (state, action) => {
-        state.loading = false;
         state.error = action.payload || action.error.message;
       })
 
-      // 🛒 Add to Cart
-      .addCase(addToCart.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(addToCart.fulfilled, (state) => {
-        state.loading = false;
-      })
+      // Add to cart
+      .addCase(addToCart.pending, (state) => { state.cartLoading = true; state.error = null; })
+      .addCase(addToCart.fulfilled, (state) => { state.cartLoading = false; })
       .addCase(addToCart.rejected, (state, action) => {
-        state.loading = false;
+        state.cartLoading = false;
+        state.error = action.payload || action.error.message;
+      })
+
+      // Add review
+      .addCase(addReview.pending, (state) => { state.reviewLoading = true; state.error = null; })
+      .addCase(addReview.fulfilled, (state, action) => {
+        state.reviewLoading = false;
+        state.selectedProduct = action.payload;
+      })
+      .addCase(addReview.rejected, (state, action) => {
+        state.reviewLoading = false;
         state.error = action.payload || action.error.message;
       });
   },
 });
 
-/* ------------------------------ ✅ Exports ------------------------------ */
+/* ----------------------- Exports ----------------------- */
 export const { setFilters, clearFilters } = productSlice.actions;
 export default productSlice.reducer;
-

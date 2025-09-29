@@ -306,6 +306,7 @@ router.put(
         isActive,
         isPublished,
         category,
+        rating,
         imagesData,
         discount, // ✅ added
       } = req.body;
@@ -354,6 +355,7 @@ router.put(
         isActive,
         isPublished,
         category,
+        rating,
         images: finalImages,
       });
 
