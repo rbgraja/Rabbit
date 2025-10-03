@@ -26,6 +26,9 @@ import Usermanagement from "./components/admin/Usermanagement";
 import Productmanagement from "./components/admin/Productmanagement";
 import Handleedit from "./components/admin/Handleedit";
 import OrderManagement from "./components/admin/Ordermanagement";
+import Testimonial from "./pages/Testimonial";
+import AdminTestimonials from "./components/admin/AdminTestimonials";
+import TestimonialForm from "./pages/TestimonialForm";
 import { Toaster } from "sonner";
 
 function AppContent() {
@@ -79,6 +82,8 @@ useEffect(() => {
           <Route path="order-confirmation" element={<Orderconfirmationpage />} />
           <Route path="order/:id" element={<OrderDetailpage />} />
           <Route path="my-order" element={<Myorder />} />
+              <Route path="testimonials" element={<Testimonial />} />
+              <Route path="give-feedback" element={<TestimonialForm />} />
         </Route>
 
         <Route
@@ -98,6 +103,8 @@ useEffect(() => {
           <Route path="orders" element={<OrderManagement />} />
           <Route path="orders/:id" element={<OrderDetailpage />} />
           <Route path="/admin/products/add" element={<Handleedit />} />
+          <Route path="/admin/testimonials" element={<AdminTestimonials />} />
+
         </Route>
       </Routes>
     </>

@@ -9,6 +9,8 @@ import orderReducer from "./slices/orderSlice";
 import adminReducer from "./slices/adminSlice";
 import adminProductReducer from "./slices/adminProductSlice";
 import adminOrderReducer from "./slices/adminOrderSlice";
+import testimonialReducer from "./slices/testimonialSlice"
+import adminTestimonialReducer from "./slices/adminTestimonialSlice";
 const store = configureStore({
   reducer: {
     auth:authReducer,
@@ -20,7 +22,8 @@ const store = configureStore({
     admin: adminReducer,
     adminProduct: adminProductReducer,
     adminOrder: adminOrderReducer,
-
+    testimonial:testimonialReducer,
+    adminTestimonials: adminTestimonialReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

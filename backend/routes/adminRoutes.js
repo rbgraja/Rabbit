@@ -3,6 +3,7 @@ const router = express.Router();
 const User = require("../models/User");
 const Order = require("../models/orderModel");
 const Product = require("../models/products");
+const Testimonial = require("../models/Testimonial");
 const Subscriber = require("../models/Subscriber");
 const { protect, authorizeRoles } = require("../middleware/auth");
 const cloudinary = require("../utils/cloudinary");
@@ -445,6 +446,148 @@ router.get("/recent-orders", protect, authorizeRoles("admin"), async (req, res) 
   } catch (err) {
     console.error("Error fetching recent orders:", err);
     res.status(500).json({ message: "Error fetching recent orders" });
+  }
+});
+/* ------------------------ Get All Testimonials ------------------------ */
+router.get("/testimonials", protect, authorizeRoles("admin"), async (req, res) => {
+  try {
+    const { approved, visible, flagged } = req.query;
+
+    let filter = {};
+    if (approved !== undefined) filter.approved = approved === "true";
+    if (visible !== undefined) filter.visible = visible === "true";
+    if (flagged !== undefined) filter.flagged = flagged === "true";
+
+    const testimonials = await Testimonial.find(filter)
+      .populate("user", "name email")
+      .populate("product", "name")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({ success: true, count: testimonials.length, testimonials });
+  } catch (err) {
+    console.error("❌ Error fetching testimonials:", err);
+    res.status(500).json({ message: "Error fetching testimonials" });
+  }
+});
+
+/* ------------------------ Create Testimonial ------------------------ */
+router.post(
+  "/testimonials",
+  protect,
+  authorizeRoles("admin"),
+  upload.array("images"),
+  async (req, res) => {
+    try {
+      const { name, email, rating, title, comment, product, approved, visible } = req.body;
+
+      if (!name || !rating || !comment) {
+        return res.status(400).json({ message: "Name, rating and comment are required" });
+      }
+
+      // Upload images if provided
+      const uploadedImages = await Promise.all(
+        (req.files || []).map((file) => {
+          return new Promise((resolve, reject) => {
+            const stream = cloudinary.uploader.upload_stream(
+              { folder: "testimonials" },
+              (err, result) => {
+                if (err) reject(err);
+                else resolve({ url: result.secure_url, public_id: result.public_id });
+              }
+            );
+            streamifier.createReadStream(file.buffer).pipe(stream);
+          });
+        })
+      );
+
+      const testimonial = await Testimonial.create({
+        name,
+        email,
+        rating,
+        title,
+        comment,
+        product: product || null,
+        approved: approved ?? true,
+        visible: visible ?? true,
+        images: uploadedImages,
+      });
+
+      res.status(201).json({ success: true, testimonial });
+    } catch (err) {
+      console.error("❌ Error creating testimonial:", err);
+      res.status(500).json({ message: "Error creating testimonial" });
+    }
+  }
+);
+
+/* ------------------------ Update Testimonial ------------------------ */
+router.put(
+  "/testimonials/:id",
+  protect,
+  authorizeRoles("admin"),
+  upload.array("images"),
+  async (req, res) => {
+    try {
+      const testimonial = await Testimonial.findById(req.params.id);
+      if (!testimonial) return res.status(404).json({ message: "Testimonial not found" });
+
+      const { name, email, rating, title, comment, approved, visible, flagged } = req.body;
+
+      // Upload new images if any
+      const uploadedImages = await Promise.all(
+        (req.files || []).map((file) => {
+          return new Promise((resolve, reject) => {
+            const stream = cloudinary.uploader.upload_stream(
+              { folder: "testimonials" },
+              (err, result) => {
+                if (err) reject(err);
+                else resolve({ url: result.secure_url, public_id: result.public_id });
+              }
+            );
+            streamifier.createReadStream(file.buffer).pipe(stream);
+          });
+        })
+      );
+
+      // Keep old images + add new ones
+      testimonial.images = [...testimonial.images, ...uploadedImages];
+
+      Object.assign(testimonial, {
+        name: name ?? testimonial.name,
+        email: email ?? testimonial.email,
+        rating: rating ?? testimonial.rating,
+        title: title ?? testimonial.title,
+        comment: comment ?? testimonial.comment,
+        approved: approved ?? testimonial.approved,
+        visible: visible ?? testimonial.visible,
+        flagged: flagged ?? testimonial.flagged,
+      });
+
+      await testimonial.save();
+      res.status(200).json({ success: true, testimonial });
+    } catch (err) {
+      console.error("❌ Error updating testimonial:", err);
+      res.status(500).json({ message: "Error updating testimonial" });
+    }
+  }
+);
+
+/* ------------------------ Delete Testimonial ------------------------ */
+router.delete("/testimonials/:id", protect, authorizeRoles("admin"), async (req, res) => {
+  try {
+    const testimonial = await Testimonial.findById(req.params.id);
+    if (!testimonial) return res.status(404).json({ message: "Testimonial not found" });
+
+    // Delete images from cloudinary also
+    await Promise.all(
+      testimonial.images.map((img) => cloudinary.uploader.destroy(img.public_id))
+    );
+
+    await testimonial.deleteOne();
+    res.status(200).json({ success: true, message: "Testimonial deleted" });
+  } catch (err) {
+    console.error("❌ Error deleting testimonial:", err);
+    res.status(500).json({ message: "Error deleting testimonial" });
   }
 });
 

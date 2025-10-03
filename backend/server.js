@@ -13,6 +13,7 @@ const orderRoutes = require("./routes/orderRoutes");
 const uploadRoutes = require("./routes/uploadRoutes");
 const subscriberRoutes = require("./routes/subscriberRoutes");
 const adminRoutes = require("./routes/adminRoutes");
+const testimonialRoutes = require('./routes/testimonialRoutes');
 // ⚙️ Load environment variables from .env file into process.env
 dotenv.config(); // This should be at the top before accessing any environment variable
 
@@ -40,6 +41,7 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/upload", uploadRoutes); 
 app.use("/api/subscribers", subscriberRoutes);
 app.use("/api/admin", adminRoutes); 
+app.use('/api/testimonials', testimonialRoutes);
 
 
 // 📞 Define a simple GET route at root URL

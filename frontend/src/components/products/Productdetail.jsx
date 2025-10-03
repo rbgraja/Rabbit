@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import Productsgrid from "./Productsgrid";
 import { useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
+import AddTestimonialLink from "../layout/AddTestimonialLink";
 import {
   fetchProductDetail,
   similarProducts,
@@ -444,7 +445,7 @@ const numReviews = selectedProduct?.reviews?.length ?? selectedProduct?.numRevie
             <div className="space-y-6">
               {selectedProduct.reviews.map((review, idx) => (
                 <div key={idx} className="border-b pb-4">
-                  <p className="font-semibold text-gray-800">{review.name}</p>
+                  <p className="font-semibold text-gray-800"> {review.name || "Anonymous"}</p>
                   <div className="flex items-center space-x-1">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <svg
@@ -514,9 +515,12 @@ const numReviews = selectedProduct?.reviews?.length ?? selectedProduct?.numRevie
               {submittingReview ? "Submitting..." : "Submit Review"}
             </button>
           </form>
+          <div className="mt-6">
+  <AddTestimonialLink />
+</div>
         </div>
       </div>
-
+<br></br>
       {/* Similar Products */}
       <Productsgrid
         title="Similar Products"

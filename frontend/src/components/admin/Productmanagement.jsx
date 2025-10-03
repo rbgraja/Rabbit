@@ -17,10 +17,33 @@ function Productmanagement() {
   );
 
   const [pendingDeleteProduct, setPendingDeleteProduct] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filteredProducts, setFilteredProducts] = useState([]);
+
+  // ✅ Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const productsPerPage = 10;
 
   useEffect(() => {
     dispatch(fetchAdminProducts());
   }, [dispatch]);
+
+  // ✅ Filter products by search term
+  useEffect(() => {
+    if (!searchTerm) {
+      setFilteredProducts(products);
+    } else {
+      const term = searchTerm.toLowerCase();
+      const filtered = products.filter(
+        (p) =>
+          (p._id && p._id.toLowerCase().includes(term)) ||
+          (p.name && p.name.toLowerCase().includes(term)) ||
+          (p.category && p.category.toLowerCase().includes(term))
+      );
+      setFilteredProducts(filtered);
+    }
+    setCurrentPage(1); // Reset page when search changes
+  }, [searchTerm, products]);
 
   const handleEdit = (product) => {
     navigate(`/admin/products/${product._id}/edit`);
@@ -40,18 +63,38 @@ function Productmanagement() {
     setPendingDeleteProduct(null);
   };
 
+  // ✅ Pagination calculations
+  const indexOfLastProduct = currentPage * productsPerPage;
+  const indexOfFirstProduct = indexOfLastProduct - productsPerPage;
+  const currentProducts = filteredProducts.slice(
+    indexOfFirstProduct,
+    indexOfLastProduct
+  );
+  const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
+
   return (
     <div className="relative max-w-7xl mx-auto p-6">
-<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
-  <h2 className="text-2xl font-bold">Product Management</h2>
-  <button
-    onClick={() => navigate("/admin/products/add")}
-    className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 w-full sm:w-auto"
-  >
-    + Add New Product
-  </button>
-</div>
+      {/* Header + Add Button */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
+        <h2 className="text-2xl font-bold">Product Management</h2>
+        <button
+          onClick={() => navigate("/admin/products/add")}
+          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 w-full sm:w-auto"
+        >
+          + Add New Product
+        </button>
+      </div>
 
+      {/* Search Input */}
+      <div className="mb-4">
+        <input
+          type="text"
+          placeholder="Search by ID, Name or Category..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full sm:w-1/2 px-3 py-2 border border-gray-300 rounded shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
 
       {/* Delete Confirmation Modal */}
       {pendingDeleteProduct && (
@@ -79,6 +122,7 @@ function Productmanagement() {
 
       {error && <p className="text-red font-semibold mb-4">{error}</p>}
 
+      {/* Product Table */}
       <div className="overflow-x-auto shadow-md sm:rounded-lg">
         <table className="min-w-full text-left text-sm text-gray-700">
           <thead className="bg-gray-100 text-xs uppercase">
@@ -87,6 +131,7 @@ function Productmanagement() {
               <th className="py-3 px-4">Price</th>
               <th className="py-3 px-4">SKU</th>
               <th className="py-3 px-4">Stock</th>
+              <th className="py-3 px-4">Category</th>
               <th className="py-3 px-4">Actions</th>
             </tr>
           </thead>
@@ -106,27 +151,28 @@ function Productmanagement() {
                   <td className="py-3 px-4">
                     <Skeleton width={90} />
                   </td>
+                  <td className="py-3 px-4">
+                    <Skeleton width={120} />
+                  </td>
                   <td className="py-3 px-4 flex space-x-2">
                     <Skeleton width={60} height={28} />
                     <Skeleton width={60} height={28} />
                   </td>
                 </tr>
               ))
-            ) : products.length === 0 ? (
+            ) : currentProducts.length === 0 ? (
               <tr>
                 <td
-                  colSpan="5"
+                  colSpan="6"
                   className="py-4 px-4 text-center text-gray-400 italic"
                 >
-                  No products available.
+                  No products found.
                 </td>
               </tr>
             ) : (
-              products.map((product) => (
+              currentProducts.map((product) => (
                 <tr key={product._id}>
-                  <td className="py-3 px-4 whitespace-nowrap">
-                    {product.name}
-                  </td>
+                  <td className="py-3 px-4 whitespace-nowrap">{product.name}</td>
                   <td className="py-3 px-4">
                     ${product.price?.toFixed(2) || "0.00"}
                   </td>
@@ -137,34 +183,65 @@ function Productmanagement() {
                         {product.stock}
                       </span>
                     ) : (
-                      <span className="text-red font-medium">
-                        Out of Stock
-                      </span>
+                      <span className="text-red font-medium">Out of Stock</span>
                     )}
                   </td>
-<td className="py-3 px-4">
-  <div className="flex flex-col sm:flex-row gap-2">
-    <button
-      className="px-3 py-1 text-white bg-blue-500 hover:bg-blue-600 rounded w-full sm:w-auto"
-      onClick={() => handleEdit(product)}
-    >
-      Edit
-    </button>
-    <button
-      className="px-3 py-1 text-white bg-red hover:bg-red rounded w-full sm:w-auto"
-      onClick={() => setPendingDeleteProduct(product)}
-    >
-      Delete
-    </button>
-  </div>
-</td>
-
+                  <td className="py-3 px-4">{product.category || "-"}</td>
+                  <td className="py-3 px-4">
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <button
+                        className="px-3 py-1 text-white bg-blue-500 hover:bg-blue-600 rounded w-full sm:w-auto"
+                        onClick={() => handleEdit(product)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="px-3 py-1 text-white bg-red hover:bg-red rounded w-full sm:w-auto"
+                        onClick={() => setPendingDeleteProduct(product)}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))
             )}
           </tbody>
         </table>
       </div>
+
+      {/* ✅ Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center mt-4 space-x-3">
+          <button
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className="px-3 py-1 border rounded disabled:opacity-50"
+          >
+            Previous
+          </button>
+          {[...Array(totalPages)].map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setCurrentPage(i + 1)}
+              className={`px-3 py-1 border rounded ${
+                currentPage === i + 1 ? "bg-blue-500 text-white" : ""
+              }`}
+            >
+              {i + 1}
+            </button>
+          ))}
+          <button
+            onClick={() =>
+              setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+            }
+            disabled={currentPage === totalPages}
+            className="px-3 py-1 border rounded disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   );
 }
